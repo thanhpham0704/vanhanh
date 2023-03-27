@@ -121,8 +121,11 @@ if authentication_status:
     salary = salary.astype({'Lương theo hợp đông': 'float', 'Thâm niên': 'float',
                            'Chức danh': "float", 'Tổng lương': 'float', 'date_affected': 'datetime64[ns]'})
     # salary.info()
+    # salary = salary.sort_values("date_affected", ascending=False)\
+    #     .drop_duplicates(subset='id_gg')
     salary = salary.sort_values("date_affected", ascending=False)\
-        .drop_duplicates(subset='id_gg')
+        .query("date_affected < @ketoan_end_time")
+
     salary.fillna(0, inplace=True)
     # Thong tin luong
     salary['salary_ngay_cong'] = round(
