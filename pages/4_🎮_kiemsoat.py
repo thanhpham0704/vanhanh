@@ -50,23 +50,21 @@ if authentication_status:
     )
     st.title(page_title + " " + page_icon)
 
-
     @st.cache_data(ttl=timedelta(days=1))
     def collect_data(link):
         return(pd.DataFrame((requests.get(link).json())))
 
-
     # @st.cache_data()
+
     def rename_lop(dataframe, column_name):
         dataframe[column_name] = dataframe[column_name].replace(
             {1: "Hoa Cúc", 2: "Gò Dầu", 3: "Lê Quang Định", 5: "Lê Hồng Phong"})
         return dataframe
 
-
     # @st.cache_data()
+
     def exclude(dataframe, columns_name):
         return(dataframe.loc[:, ~dataframe.columns.isin(columns_name)])
-
 
     # @st.cache_data()
     # def grand_total(dataframe, column):
@@ -78,6 +76,7 @@ if authentication_status:
     #     return dataframe
 
     # @st.cache_data()
+
     def get_link(dataframe):
         # Get url
         url = "https://vietop.tech/admin/hocvien/view/"
@@ -90,7 +89,6 @@ if authentication_status:
         dataframe['hv_link'] = hv_link
         return dataframe
 
-
     def kh_ten_converter(dataframe):
         empty = []
         for ten in dataframe.kh_ten:  # Group kh_ten
@@ -100,7 +98,6 @@ if authentication_status:
                 empty.append("KHOÁ NHÓM")
         dataframe['group_kh_ten'] = empty
         return dataframe
-
 
     orders = collect_data(
         'https://vietop.tech/api/get_data/orders').query("deleted_at.isnull()")
@@ -115,12 +112,12 @@ if authentication_status:
 
     diemdanh_details = collect_data(
         'https://vietop.tech/api/get_data/diemdanh_details')
-    diemdanh_details = diemdanh_details.query("phanloai == 1")  # Filter lop chính
+    diemdanh_details = diemdanh_details.query(
+        "phanloai == 1")  # Filter lop chính
     # Get a response
     req = requests.get('https://vietop.tech/api/get_data/lophoc')
     req_json = req.json()  # Convert to list
     lophoc = pd.DataFrame(req_json)  # Convert to pandas dataframe
-
 
     def lophoc_cleaner():
         # Fill null values in pandas dataframe
@@ -153,13 +150,13 @@ if authentication_status:
             length = len(row['lop_thoigianhoc'])
             empty.append(length)
         lophoc_clean['days_in_weeks'] = empty
-        lophoc_clean = lophoc_clean.query("lop_type == 1 and deleted_at.isnull()")
+        lophoc_clean = lophoc_clean.query(
+            "lop_type == 1 and deleted_at.isnull()")
         # Exclude
         lophoc_clean = exclude(lophoc_clean, columns_name=['lop_trogiang', 'lop_start',
                                                            'lop_lock', 'updated_by', 'created_by', 'updated_at', 'giaovien3',
                                                            'trogiang2', 'trogiang3'])
         return lophoc_clean
-
 
     def create_chart(type, dataframe, y_axis, x_axis, text):
         fig = type(dataframe, y=y_axis,
@@ -171,7 +168,6 @@ if authentication_status:
                           width=400, yaxis_title="",
                           legend_title="")
         return fig
-
 
     # ------------------------------------------------------------ Tiền giờ của lớp
     lophoc_clean = lophoc_cleaner()
@@ -197,7 +193,8 @@ if authentication_status:
     # Merge users
     tiengiolop = tiengiolop.merge(
         users[['id', 'fullname']], left_on='giaovien1', right_on='id')
-    tiengiolop = tiengiolop.loc[:, ~tiengiolop.columns.isin(['id', 'giaovien1'])]
+    tiengiolop = tiengiolop.loc[:, ~
+                                tiengiolop.columns.isin(['id', 'giaovien1'])]
     # Change columns name
     tiengiolop.columns = ['thứ', 'Ngày mở lớp', 'ca học', 'tên khoá học', 'chi nhánh', 'lớp id',
                           'tên lớp', 'lop_thoigianhoc', 'loại lớp', 'online/offline', 'sĩ số', 'tiền giờ', 'giáo viên1', 'giáo viên2']
@@ -216,7 +213,6 @@ if authentication_status:
     # st.write(tiengiolop)
     tiengio_giaovien = tiengiolop.groupby('giáo viên2', as_index=False)['tiền giờ'].sum()\
         # .to_excel('tiengio_giaovien.xlsx', sheet_name='tiengio',engine="xlsxwriter", index=False)
-
 
     # ------------------------------------------------------------ Giờ còn lại của từng học viên
 
@@ -256,7 +252,8 @@ if authentication_status:
         else:
             tien_sap_het.append(int(0))
     df['tien_sap_het'] = tien_sap_het
-    df = df.groupby(['lop_id', 'group_kh_ten'], as_index=False).tien_sap_het.sum()
+    df = df.groupby(['lop_id', 'group_kh_ten'],
+                    as_index=False).tien_sap_het.sum()
     # Merge
     df = df.merge(tiengiolop, left_on='lop_id', right_on='lớp id')
     df['tiền giờ tương lai'] = df['tiền giờ'] - df['tien_sap_het']
@@ -269,7 +266,8 @@ if authentication_status:
 
     # -------------------------------------------------- merge hiện tại và tương lai
     now_future = tiengiolop.merge(df, left_on='lớp id', right_on='lop_id')
-    now_future['diff'] = now_future['tiền giờ'] - now_future['tiền giờ tương lai']
+    now_future['diff'] = now_future['tiền giờ'] - \
+        now_future['tiền giờ tương lai']
     now_future['diff_percent'] = round((
         now_future['tiền giờ'] - now_future['tiền giờ tương lai']) / now_future['tiền giờ'] * 100, 0)
     now_future['lớp id'] = now_future['lớp id'].astype("str")
@@ -284,7 +282,7 @@ if authentication_status:
     with st.form(key='filter_form'):
         col1, col2 = st.columns(2)
         nhom_kem = col1.selectbox(label="Select loại lớp:", options=list(
-            now_future["group_kh_ten"].unique()), index=1)
+            now_future["group_kh_ten"].unique()), index=0)
         lop_id = col2.multiselect(label='Select lớp id', options=list(
             now_future.query("group_kh_ten == @nhom_kem")['lop_id'].unique()))
         submit_button = st.form_submit_button(
