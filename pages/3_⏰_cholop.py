@@ -8,7 +8,7 @@ import pickle
 import streamlit_authenticator as stauth
 
 page_title = "Chờ lớp"
-page_icon = ":chart_with_upwards_trend:"
+page_icon = "⏰"
 layout = "wide"
 st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
 
@@ -49,11 +49,9 @@ if authentication_status:
     )
     st.title(page_title + " " + page_icon)
 
-
     @st.cache_data(ttl=timedelta(days=1))
     def collect_data(link):
         return(pd.DataFrame((requests.get(link).json())))
-
 
     @st.cache_data()
     def rename_lop(dataframe, column_name):
@@ -61,11 +59,9 @@ if authentication_status:
             {1: "Hoa Cúc", 2: "Gò Dầu", 3: "Lê Quang Định", 5: "Lê Hồng Phong"})
         return dataframe
 
-
     @st.cache_data()
     def exclude(dataframe, columns_name):
         return(dataframe.loc[:, ~dataframe.columns.isin(columns_name)])
-
 
     @st.cache_data()
     def grand_total(dataframe, column):
@@ -75,7 +71,6 @@ if authentication_status:
         # append the new row to the dataframe
         dataframe = dataframe.append(totals, ignore_index=True)
         return dataframe
-
 
     @st.cache_data()
     def get_link(dataframe):
@@ -90,7 +85,6 @@ if authentication_status:
         dataframe['hv_link'] = hv_link
         return dataframe
 
-
     orders = collect_data(
         'https://vietop.tech/api/get_data/orders').query("deleted_at.isnull()")
     hocvien = collect_data(
@@ -101,7 +95,6 @@ if authentication_status:
     users = collect_data('https://vietop.tech/api/get_data/users')
     khoahoc = collect_data('https://vietop.tech/api/get_data/khoahoc')
     khoahoc = exclude(khoahoc, columns_name=['id', 'dahoc'])
-
 
     # --------------------------------------------------------------Tổng chờ lớp
     # Chờ lớp
@@ -224,8 +217,8 @@ if authentication_status:
                           width=800)
 
         st.dataframe(tonghop.style.background_gradient().set_precision(0),
-                     height=210,
-                     width=1000)
+                     use_container_width=True)
+        "---"
         st.subheader("Phân bổ học viên chờ lớp theo tháng")
         st.plotly_chart(fig)
     else:
@@ -262,7 +255,7 @@ if authentication_status:
                           width=800)
 
         st.dataframe(tonghop.style.background_gradient().set_precision(0),
-                     height=210,
-                     width=1000)
+                     use_container_width=True)
+        "---"
         st.subheader("Phân bổ học viên chờ lớp theo tháng")
         st.plotly_chart(fig)
