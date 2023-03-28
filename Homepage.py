@@ -65,7 +65,8 @@ if authentication_status:
     # Filter
     now = datetime.now()
     DEFAULT_START_DATE = datetime(now.year, now.month, 1)
-    DEFAULT_END_DATE = datetime(now.year, now.month + 1, 1)
+    DEFAULT_END_DATE = datetime(now.year, now.month, 1) + timedelta(days=32)
+    DEFAULT_END_DATE = DEFAULT_END_DATE.replace(day=1) - timedelta(days=1)
 
     # Create a form to get the date range filters
     with st.form(key='date_filter_form'):
@@ -124,8 +125,8 @@ if authentication_status:
     # salary = salary.sort_values("date_affected", ascending=False)\
     #     .drop_duplicates(subset='id_gg')
     salary = salary.sort_values("date_affected", ascending=False)\
-        .query("date_affected < @ketoan_end_time")
-
+        .query("date_affected <= @ketoan_end_time")\
+        .drop_duplicates("id_gg")
     salary.fillna(0, inplace=True)
     # Thong tin luong
     salary['salary_ngay_cong'] = round(
@@ -141,7 +142,7 @@ if authentication_status:
     gv_diemdanh = collect_data('https://vietop.tech/api/get_data/diemdanh')
     gv_diemdanh['date_created'] = pd.to_datetime(gv_diemdanh['date_created'])
     gv_diemdanh = gv_diemdanh.query(
-        "date_created >= @ketoan_start_time and date_created < @ketoan_end_time")
+        "date_created >= @ketoan_start_time and date_created <= @ketoan_end_time")
     # Ca hoc table
     cahoc = {'cahoc': ['ca1', 'ca2', 'ca3', 'ca4', 'ca5', 'ca6'],
              'start_time': ['08:30:00', '10:30:00', '13:30:00', '15:30:00', '18:00:00', '19:45:00'],
@@ -369,7 +370,7 @@ if authentication_status:
     # create thucthu
     diemdanh_details['date_created'] = pd.to_datetime(
         diemdanh_details['date_created'])
-    thucthu = diemdanh_details.query('date_created >= @ketoan_start_time and date_created < @ketoan_end_time')\
+    thucthu = diemdanh_details.query('date_created >= @ketoan_start_time and date_created <= @ketoan_end_time')\
         .groupby(['ketoan_id', 'lop_id', 'gv_id', 'date_created'], as_index=False)['giohoc'].sum()\
         .merge(orders, on='ketoan_id')\
         .merge(lophoc, on='lop_id')\
@@ -403,6 +404,7 @@ if authentication_status:
     # Thực thu điểm danh theo ngày và tháng
     fig9 = px.bar(thucthu_diemdanh_ngay, x=thucthu_diemdanh_ngay.index, y=thucthu_diemdanh_ngay.columns, barmode='stack',
                   color_discrete_sequence=['#07a203', '#ffc107', '#e700aa', '#2196f3'])
+
     fig10 = px.bar(thucthu_diemdanh_month, x="date_created_month",
                    y="thucthu", color="lop_cn", barmode="group", color_discrete_sequence=['#07a203', '#ffc107', '#e700aa', '#2196f3'], text="thucthu")
     # update the chart layout
@@ -440,7 +442,7 @@ if authentication_status:
         salary_thucthu_grand_total, 'lop_cn')
     # salary_thucthu_grand_total.to_excel(
     #     'thucthu_ketthuc.xlsx', sheet_name='thucthu_ketthuc', engine="xlsxwriter", index=False)
-
+    st.dataframe(salary_thucthu_grand_total)
     # "_______________"
     # Create a barplot for Tỷ lệ tổng lương / thực thu theo chi nhánh
     fig2 = plotly_chart(salary_thucthu_grand_total, 'lop_cn', 'percent', salary_thucthu_grand_total["percent"].apply(
@@ -479,7 +481,9 @@ if authentication_status:
         .merge(thucthu_gv, left_on='id_gg', right_on='id', how='left')
     gv_thucthu_gv['percent'] = round(gv_thucthu_gv['fixed_overtime'] /
                                      gv_thucthu_gv['thucthu'] * 100, 2)
+
     gv_thucthu_gv = gv_thucthu_gv.merge(salary, left_on='id', right_on='id_gg')
+
     # Fulltime
     df = gv_thucthu_gv
     df1 = df[df["working_status"] == "Fulltime"].sort_values(
@@ -538,7 +542,7 @@ if authentication_status:
     # Sort
     chuyenphi = chuyenphi.sort_values(by='created_at', ascending=False)
     chuyenphi = chuyenphi.query(
-        "created_at >= @ketoan_start_time and created_at < @ketoan_end_time")
+        "created_at >= @ketoan_start_time and created_at <= @ketoan_end_time")
     # Rename columns
     # chuyenphi.columns = [["created_at", "Họ tên", "ketoan_coso", "Ghi chú", "Học phí chuyển", "Phí chuyển", "Còn lại sau phí"]]
     chuyenphi = chuyenphi.groupby('ketoan_coso', as_index=False)[
@@ -560,7 +564,7 @@ if authentication_status:
     df['date_end'] = pd.to_datetime(df['date_end'])
     # Filter gioconlai > 0 and time
     thucthu_ketthuc = df.query("gio_con_lai > 0")\
-        .query("date_end >= @ketoan_start_time and date_end < @ketoan_end_time")
+        .query("date_end >= @ketoan_start_time and date_end <= @ketoan_end_time")
     thucthu_ketthuc = thucthu_ketthuc.merge(
         orders[['hv_id', 'ketoan_id']], on='ketoan_id')
     thucthu_ketthuc = thucthu_ketthuc.groupby("ketoan_coso", as_index=False)[
@@ -606,6 +610,7 @@ if authentication_status:
         lambda x: '{:.2%}'.format(x/100))
     # define a function
 
+    @st.cache_data()
     def thousands_divider(df, col):
         df[col] = df[col].apply(
             lambda x: '{:,.0f}'.format(x))
@@ -618,9 +623,9 @@ if authentication_status:
         thucthu_hocvien_lop, 'thực thu chuyển phí')
     thucthu_hocvien_lop = thousands_divider(
         thucthu_hocvien_lop, 'thực thu kết thúc')
-
+    thucthu_hocvien_lop = thucthu_hocvien_lop.set_index("lop_cn")
     st.dataframe(thucthu_hocvien_lop.drop(["ketoan_coso", "total_students", "total_classes", "thucthu_div_hocvien", "thucthu_div_lophoc"],
-                                          axis=1).style.background_gradient().set_precision(0))
+                                          axis=1).style.background_gradient().set_precision(0), width=900)
 
     # Show Chi nhanh by 2 columns
     left_column, right_column = st.columns([1, 2])
