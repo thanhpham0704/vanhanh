@@ -59,6 +59,7 @@ if authentication_status:
         unsafe_allow_html=True
     )
     st.title(page_title + " " + page_icon)
+    "---"
 
     @st.cache_data(ttl=timedelta(days=1))
     def collect_data(link):
@@ -157,7 +158,7 @@ if authentication_status:
                       width=800)
 
     # st.plotly_chart(fig)
-
+    "---"
     left_column, right_column = st.columns(2)
     left_column.subheader("Ngày còn lại trước khi học lại")
     left_column.plotly_chart(fig, use_container_width=True)
