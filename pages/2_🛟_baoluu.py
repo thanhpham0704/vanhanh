@@ -9,7 +9,7 @@ import pickle
 import streamlit_authenticator as stauth
 
 page_title = "Bảo lưu"
-page_icon = ":chart_with_upwards_trend:"
+page_icon = "🛟"
 layout = "wide"
 st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
 
@@ -64,13 +64,11 @@ if authentication_status:
     def collect_data(link):
         return(pd.DataFrame((requests.get(link).json())))
 
-
     @st.cache_data(ttl=timedelta(days=1))
     def rename_lop(dataframe, column_name):
         dataframe[column_name] = dataframe[column_name].replace(
             {1: "Hoa Cúc", 2: "Gò Dầu", 3: "Lê Quang Định", 5: "Lê Hồng Phong"})
         return dataframe
-
 
     orders = collect_data(
         'https://vietop.tech/api/get_data/orders').query("deleted_at.isnull()")
@@ -79,18 +77,22 @@ if authentication_status:
     req = requests.get('https://vietop.tech/api/get_data/history')
 
     req_json = req.json()
-    baoluu_date = pd.DataFrame(json.loads(r['history_value']) for r in req_json)
+    baoluu_date = pd.DataFrame(json.loads(
+        r['history_value']) for r in req_json)
     history = pd.DataFrame(req_json)
 
     baoluu_date = baoluu_date[baoluu_date.ngayhoclai.notnull(
     ) & baoluu_date.ngaybaoluu.notnull()]
-    baoluu_date = baoluu_date[['ketoan_id', 'ngayhoclai', 'ngaybaoluu', 'lydo']]
+    baoluu_date = baoluu_date[['ketoan_id',
+                               'ngayhoclai', 'ngaybaoluu', 'lydo']]
     # Change data types
     baoluu_date = baoluu_date.astype(
         {'ketoan_id': 'int32', 'ngayhoclai': 'datetime64[ns]', 'ngaybaoluu': 'datetime64[ns]'})
     # Format dates
-    baoluu_date['ngayhoclai'] = baoluu_date['ngayhoclai'].dt.strftime('%d-%m-%Y')
-    baoluu_date['ngaybaoluu'] = baoluu_date['ngaybaoluu'].dt.strftime('%d-%m-%Y')
+    baoluu_date['ngayhoclai'] = baoluu_date['ngayhoclai'].dt.strftime(
+        '%d-%m-%Y')
+    baoluu_date['ngaybaoluu'] = baoluu_date['ngaybaoluu'].dt.strftime(
+        '%d-%m-%Y')
     # Merge history
     df = history.query("action == 'baoluu' and (object == 'giahan' or object == 'baoluu')").\
         merge(orders.query('ketoan_active == 4'), on='ketoan_id',
@@ -139,13 +141,13 @@ if authentication_status:
     df = baoluu.pivot_table(values='hvbl_id', index='Chi nhánh',
                             columns='group ngày còn lại', aggfunc='count', margins=True)
 
-
     baoluu = baoluu.sort_values("Còn lại", ascending=False)
     baoluu = baoluu.reset_index(drop=True)
     # baoluu = rename_lop(baoluu, 'Chi nhánh')r
     # Tổng quan bảo lưu
     st.subheader("Tổng quan bảo lưu")
-    st.dataframe(df.style.background_gradient().set_precision(0), width=1200, height=210)
+    st.dataframe(df.style.background_gradient(
+    ).set_precision(0), width=1200, height=210)
     # st.write(baoluu)
     fig = px.bar(baoluu, y='Họ Tên', x='Còn lại', text='Còn lại',
                  color='group ngày còn lại')
