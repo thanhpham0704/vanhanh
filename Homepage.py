@@ -640,7 +640,7 @@ if authentication_status:
     # Show tables
     st.plotly_chart(fig2, use_container_width=True)
     st.dataframe(thucthu_hocvien_lop.drop(["ketoan_coso", "total_students", "total_classes", "thucthu_div_hocvien", "thucthu_div_lophoc"],
-                                          axis=1).style.background_gradient().set_precision(0), width=900)
+                                          axis=1).style.background_gradient().set_precision(0), use_container_width=True)
     # Show Chi nhanh by 2 columns
 
     left_column, right_column = st.columns([1, 2])
