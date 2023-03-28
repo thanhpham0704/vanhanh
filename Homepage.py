@@ -171,6 +171,7 @@ if authentication_status:
     ca6 = pd.to_datetime('2000-01-01 19:30:00').time()
     # Create a function that takes a time and returns "Morning" or "Evening" depending on whether the time falls within the specified range
 
+    @st.cache_data()
     def time_of_day(time):
         if (time >= start_time) & (time < end_time):
             return "Sáng"
@@ -178,6 +179,7 @@ if authentication_status:
             return "Tối"
     # Create a function that takes a time and returns "Morning" or "Evening" depending on whether the time falls within the specified range
 
+    @st.cache_data()
     def day_of_week(day):
         if (day == 5) | (day == 6):
             return "weekend"
@@ -185,6 +187,7 @@ if authentication_status:
             return "weekdays"
     # Create a function that takes a time and returns "Morning" or "Evening" depending on whether the time falls within the specified range
 
+    @st.cache_data()
     def cahoc_converter(ca):
         if (ca >= ca1) & (ca < ca2):
             return 1
@@ -391,6 +394,7 @@ if authentication_status:
         ['id', 'fullname', 'lop_cn'], as_index=False)['thucthu'].sum()
     # "_______________"
 
+    @st.cache_data()
     def thucthu_time(column):
         df = thucthu.groupby(['lop_cn', column], as_index=False)[
             'thucthu'].sum()
@@ -429,6 +433,8 @@ if authentication_status:
         overtime_fixed_salary_cn['salary_gio_cong']
 
     salary_thucthu = overtime_fixed_salary_cn.merge(thucthu_cn, on='lop_cn')
+    salary_thucthu = salary_thucthu.sort_values(
+        "lop_cn", ascending=False)
 
     # Create grand total
     salary_thucthu_grand_total = grand_total(salary_thucthu, 'lop_cn')
@@ -440,12 +446,15 @@ if authentication_status:
         salary_thucthu_grand_total['percent'], 2)
     salary_thucthu_grand_total = rename_lop(
         salary_thucthu_grand_total, 'lop_cn')
+
     # salary_thucthu_grand_total.to_excel(
     #     'thucthu_ketthuc.xlsx', sheet_name='thucthu_ketthuc', engine="xlsxwriter", index=False)
-    st.dataframe(salary_thucthu_grand_total)
+
+    salary_thucthu_grand_total.columns = ['Chi nhánh', 'Tổng lương ngày công',
+                                          'Tổng lương giờ công', 'Tổng lương giáo viên', 'Thực thu điểm danh', 'Tổng lương / thực thu']
     # "_______________"
     # Create a barplot for Tỷ lệ tổng lương / thực thu theo chi nhánh
-    fig2 = plotly_chart(salary_thucthu_grand_total, 'lop_cn', 'percent', salary_thucthu_grand_total["percent"].apply(
+    fig2 = plotly_chart(salary_thucthu_grand_total, 'Tổng lương / thực thu', 'Chi nhánh', salary_thucthu_grand_total["Tổng lương / thực thu"].apply(
         lambda x: '{:.2%}'.format(x/100)),
         "Tỷ lệ tổng lương / thực thu theo chi nhánh", 'Chi nhánh', 'Tổng lương / thực thu')
 
@@ -602,14 +611,16 @@ if authentication_status:
         lambda x: round(x/thucthu_hocvien_lop['tổng thực thu'].sum()*100, 2))
     # create a new row with the sum of each numerical column
     totals = thucthu_hocvien_lop.select_dtypes(include=[float, int]).sum()
-    totals["lop_cn"] = "Vietop"
+    totals["lop_cn"] = "Grand total"
     # append the new row to the dataframe
     thucthu_hocvien_lop = thucthu_hocvien_lop.append(totals, ignore_index=True)
     # Add % in tỷ trọng tổng thực thu
     thucthu_hocvien_lop["tỷ trọng tổng thực thu"] = thucthu_hocvien_lop["tỷ trọng tổng thực thu"].apply(
         lambda x: '{:.2%}'.format(x/100))
-    # define a function
+    salary_thucthu_grand_total['Tổng lương / thực thu'] = salary_thucthu_grand_total['Tổng lương / thực thu'].apply(
+        lambda x: '{:.2%}'.format(x/100))
 
+    # define a function
     @st.cache_data()
     def thousands_divider(df, col):
         df[col] = df[col].apply(
@@ -624,10 +635,14 @@ if authentication_status:
     thucthu_hocvien_lop = thousands_divider(
         thucthu_hocvien_lop, 'thực thu kết thúc')
     thucthu_hocvien_lop = thucthu_hocvien_lop.set_index("lop_cn")
+
+    thucthu_hocvien_lop.index.names = ['Chi nhánh']
+    # Show tables
+    st.plotly_chart(fig2, use_container_width=True)
     st.dataframe(thucthu_hocvien_lop.drop(["ketoan_coso", "total_students", "total_classes", "thucthu_div_hocvien", "thucthu_div_lophoc"],
                                           axis=1).style.background_gradient().set_precision(0), width=900)
-
     # Show Chi nhanh by 2 columns
+
     left_column, right_column = st.columns([1, 2])
     left_column.plotly_chart(fig10, use_container_width=True)
     right_column.plotly_chart(fig9, use_container_width=True)
@@ -635,31 +650,19 @@ if authentication_status:
     # left_column.plotly_chart(fig7, use_container_width=True)
     # right_column.plotly_chart(fig8, use_container_width=True)
 
-    left_column, right_column = st.columns(2)
-    left_column.plotly_chart(fig5, use_container_width=True)
-    right_column.plotly_chart(fig6, use_container_width=True)
+    # left_column, right_column = st.columns(2)
+    # left_column.plotly_chart(fig5, use_container_width=True)
+    # right_column.plotly_chart(fig6, use_container_width=True)
 
-    left_column, right_column = st.columns(2)
-    left_column.plotly_chart(fig1, use_container_width=True)
-    right_column.plotly_chart(fig2, use_container_width=True)
+    # left_column, right_column = st.columns(2)
+    # left_column.plotly_chart(fig1, use_container_width=True)
+    # right_column.plotly_chart(fig2, use_container_width=True)
 
     left_column, right_column = st.columns(2)
     left_column.plotly_chart(fig3, use_container_width=True)
     right_column.plotly_chart(fig3_1, use_container_width=True)
 
-    # Create a filter fullname
-    # Create a form to get the date range filters
-    # with st.form(key='fullname and working status filter form'):
-    #     fullname = st.selectbox(
-    #         label="Select teacher name:",
-    #         options=["All"] + list(thucthu_details["fullname"].unique()),
-    #         index=0)
-    #     submit_button = st.form_submit_button(
-    #         label='Filter',  use_container_width=True)
     ""
-    # Show tables affected by filter fullname
-    # overtime_salary_fulltime["out_div_total"].apply(
-    #     lambda x: '{:.2%}'.format(x/100)),
 
     fig4 = plotly_chart(overtime_salary_fulltime[['Họ và tên', 'out_div_total']].sort_values(
         "out_div_total", ascending=True), "Họ và tên", 'out_div_total', 'out_div_total',
