@@ -10,7 +10,7 @@ import pickle
 import streamlit_authenticator as stauth
 
 page_title = "Kiểm soát lớp học"
-page_icon = ":chart_with_upwards_trend:"
+page_icon = "🎮"
 layout = "wide"
 st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
 names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành"]
