@@ -12,7 +12,6 @@ page_icon = "💯"
 layout = "wide"
 st.set_page_config(page_title=page_title,
                    page_icon=page_icon, layout=layout)
-"---"
 # ------------------------------------------
 names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành"]
 usernames = ["thanhpham", "tampham", "vietopvanhanh"]
@@ -51,6 +50,7 @@ if authentication_status:
         unsafe_allow_html=True
     )
     st.title(page_title + " " + page_icon)
+    "---"
 
 # ------------------------------------------ Lớp đang học
 
@@ -130,7 +130,7 @@ if authentication_status:
     df = df.merge(df1, on='kh_ten', how='left')
     df = df.fillna(100)
     df = df.set_index("kh_ten")
-
+    "---"
     # df = df.drop("index", axis=1)
     st.subheader("Học viên đang học")
     st.dataframe(df.style.background_gradient(
