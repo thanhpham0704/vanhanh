@@ -294,7 +294,8 @@ if authentication_status:
     df = df[['lop_id', 'ca học', 'giáo viên2', 'hv_fullname',
              'ketoan_tientrengio', 'giờ còn lại']].query('lop_id == @lop_id')
     df = df.set_index("lop_id")
-    st.dataframe(df, width=1200)
+    ""
+    st.dataframe(df, use_container_width=True)
     # -------------------------------------------------- merge hiện tại và tương lai và tiền giờ từng học viên
     # Create figures
     fig1 = create_chart(px.bar, now_future, 'lớp id',
