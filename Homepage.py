@@ -410,7 +410,7 @@ if authentication_status:
                   color_discrete_sequence=['#07a203', '#ffc107', '#e700aa', '#2196f3'])
 
     fig10 = px.bar(thucthu_diemdanh_month, x="date_created_month",
-                   y="thucthu", color="lop_cn", barmode="group", color_discrete_sequence=['#07a203', '#ffc107', '#e700aa', '#2196f3'], text="thucthu")
+                   y="thucthu", color="lop_cn", barmode="group", color_discrete_sequence=['#ffc107', '#07a203', '#2196f3', '#e700aa'], text="thucthu")
     # update the chart layout
     fig9.update_layout(title='Thực thu điểm danh theo ngày',
                        xaxis_title='Ngày', yaxis_title='Thực thu')
