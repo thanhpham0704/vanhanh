@@ -107,6 +107,13 @@ if authentication_status:
         # append the new row to the dataframe
         dataframe = dataframe.append(totals, ignore_index=True)
         return dataframe
+        # define a function
+
+    @st.cache_data()
+    def thousands_divider(df, col):
+        df[col] = df[col].apply(
+            lambda x: '{:,.0f}'.format(x))
+        return df
 
     # "---------------" Thông tin lương giáo viên
     users = collect_data('https://vietop.tech/api/get_data/users')
@@ -405,17 +412,19 @@ if authentication_status:
     thucthu_diemdanh_ngay = thucthu_diemdanh_ngay.pivot(
         index='date_created', columns='lop_cn', values='thucthu')
     thucthu_diemdanh_month = thucthu_time('date_created_month')
+
     # Thực thu điểm danh theo ngày và tháng
     fig9 = px.bar(thucthu_diemdanh_ngay, x=thucthu_diemdanh_ngay.index, y=thucthu_diemdanh_ngay.columns, barmode='stack',
                   color_discrete_sequence=['#07a203', '#ffc107', '#e700aa', '#2196f3'])
 
     fig10 = px.bar(thucthu_diemdanh_month, x="date_created_month",
-                   y="thucthu", color="lop_cn", barmode="group", color_discrete_sequence=['#ffc107', '#07a203', '#2196f3', '#e700aa'], text="thucthu")
+                   y="thucthu", color="lop_cn", barmode="group", color_discrete_sequence=['#ffc107', '#07a203', '#2196f3', '#e700aa'], text='thucthu')
     # update the chart layout
     fig9.update_layout(title='Thực thu điểm danh theo ngày',
                        xaxis_title='Ngày', yaxis_title='Thực thu')
     fig10.update_layout(title='Thực thu điểm danh theo tháng',
                         xaxis_title='Tháng', yaxis_title='Thực thu', showlegend=False)
+    fig10.update_traces(hovertemplate="Thực thu: %{y:,.0f}<extra></extra>")
     # "_______________"
     fig1 = plotly_chart(thucthu_cn_rename, 'lop_cn', 'thucthu', thucthu_cn_rename['thucthu'].apply(lambda x: format(x, ',')),
                         "Thực thu theo chi nhánh", 'Chi nhánh', 'Thực thu')
@@ -620,12 +629,6 @@ if authentication_status:
     salary_thucthu_grand_total['Tổng lương / thực thu'] = salary_thucthu_grand_total['Tổng lương / thực thu'].apply(
         lambda x: '{:.2%}'.format(x/100))
 
-    # define a function
-    @st.cache_data()
-    def thousands_divider(df, col):
-        df[col] = df[col].apply(
-            lambda x: '{:,.0f}'.format(x))
-        return df
     thucthu_hocvien_lop = thousands_divider(
         thucthu_hocvien_lop, 'tổng thực thu')
     thucthu_hocvien_lop = thousands_divider(
