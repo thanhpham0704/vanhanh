@@ -594,6 +594,7 @@ if authentication_status:
         .query("date_end >= @ketoan_start_time and date_end <= @ketoan_end_time")
     thucthu_ketthuc = thucthu_ketthuc.merge(
         orders[['hv_id', 'ketoan_id']], on='ketoan_id')
+    thucthu_ketthuc
     thucthu_ketthuc = thucthu_ketthuc.groupby("ketoan_coso", as_index=False)[
         'thực thu kết thúc'].sum()
     thucthu_ketthuc = rename_lop(thucthu_ketthuc, 'ketoan_coso')
