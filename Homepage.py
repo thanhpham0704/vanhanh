@@ -107,13 +107,6 @@ if authentication_status:
         # append the new row to the dataframe
         dataframe = dataframe.append(totals, ignore_index=True)
         return dataframe
-        # define a function
-
-    @st.cache_data()
-    def thousands_divider(df, col):
-        df[col] = df[col].apply(
-            lambda x: '{:,.0f}'.format(x))
-        return df
 
     # "---------------" Thông tin lương giáo viên
     users = collect_data('https://vietop.tech/api/get_data/users')
@@ -338,6 +331,9 @@ if authentication_status:
     # ----------------------# Thực thu
     diemdanh_details = collect_data('https://vietop.tech/api/get_data/diemdanh_details')\
         .query("phanloai == 1")  # Filter lop chính
+    diemdanh_details['date_created'] = pd.to_datetime(
+        diemdanh_details['date_created'])
+    diemdanh_details = diemdanh_details.query("date_created > '2023-01-01'")
     orders = collect_data(
         'https://vietop.tech/api/get_data/orders').query("deleted_at.isnull()")
     lophoc = collect_data('https://vietop.tech/api/get_data/lophoc')
@@ -350,9 +346,9 @@ if authentication_status:
     hocvien_danghoc = rename_lop(hocvien_danghoc, 'ketoan_coso')
 
     @st.cache_data()
-    def plotly_chart(df, yvalue, xvalue, text, title, y_title, x_title):
+    def plotly_chart(df, yvalue, xvalue, text, title, y_title, x_title, color=None):
         fig = px.bar(df, y=yvalue,
-                     x=xvalue, text=text)
+                     x=xvalue, text=text, color_discrete_sequence=color)
         fig.update_layout(
             title=title,
             yaxis_title=y_title,
@@ -378,15 +374,31 @@ if authentication_status:
     # "------------------"
 
     # create thucthu
-    diemdanh_details['date_created'] = pd.to_datetime(
-        diemdanh_details['date_created'])
-    thucthu = diemdanh_details.query('date_created >= @ketoan_start_time and date_created <= @ketoan_end_time')\
+
+    diemdanh_details_filter = diemdanh_details.query(
+        'date_created >= @ketoan_start_time and date_created <= @ketoan_end_time')
+    thucthu = diemdanh_details_filter\
         .groupby(['ketoan_id', 'lop_id', 'gv_id', 'date_created'], as_index=False)['giohoc'].sum()\
         .merge(orders, on='ketoan_id')\
         .merge(lophoc, on='lop_id')\
         .merge(users[['fullname', 'id']], left_on='gv_id', right_on='id')
+    thucthu_all = diemdanh_details\
+        .groupby(['ketoan_id', 'lop_id', 'gv_id', 'date_created'], as_index=False)['giohoc'].sum()\
+        .merge(orders, on='ketoan_id')\
+        .merge(lophoc, on='lop_id')\
+        .merge(users[['fullname', 'id']], left_on='gv_id', right_on='id')
+
     thucthu['thucthu'] = thucthu['giohoc'] * thucthu['ketoan_tientrengio']
     thucthu['date_created_month'] = thucthu['date_created'].dt.month_name()
+    thucthu_all['thucthu'] = thucthu_all['giohoc'] * \
+        thucthu_all['ketoan_tientrengio']
+    thucthu_all['date_created_month'] = thucthu_all['date_created'].dt.month_name()
+
+    new_order = ['January', 'February', 'March', 'April', 'May', 'June',
+                 'July', 'August', 'September', 'October', 'November', 'December']
+    # Reorder months
+    thucthu_all['date_created_month'] = pd.Categorical(
+        thucthu_all['date_created_month'], categories=new_order, ordered=True)
     # Groupby giaovien
     thucthu_gv = thucthu.groupby(['id', 'fullname'], as_index=False)[
         'thucthu'].sum()
@@ -402,23 +414,22 @@ if authentication_status:
     # "_______________"
 
     @st.cache_data()
-    def thucthu_time(column):
-        df = thucthu.groupby(['lop_cn', column], as_index=False)[
+    def thucthu_time(dataframe, column):
+        df = dataframe.groupby(['lop_cn', column], as_index=False)[
             'thucthu'].sum()
         df.lop_cn = df.lop_cn.replace(
             {1: "Hoa Cúc", 2: "Gò Dầu", 3: "Lê Quang Định", 5: "Lê Hồng Phong"})
         return df
-    thucthu_diemdanh_ngay = thucthu_time('date_created')
+    thucthu_diemdanh_ngay = thucthu_time(thucthu, 'date_created')
     thucthu_diemdanh_ngay = thucthu_diemdanh_ngay.pivot(
         index='date_created', columns='lop_cn', values='thucthu')
-    thucthu_diemdanh_month = thucthu_time('date_created_month')
-
+    thucthu_diemdanh_month = thucthu_time(thucthu_all, 'date_created_month')
     # Thực thu điểm danh theo ngày và tháng
     fig9 = px.bar(thucthu_diemdanh_ngay, x=thucthu_diemdanh_ngay.index, y=thucthu_diemdanh_ngay.columns, barmode='stack',
                   color_discrete_sequence=['#07a203', '#ffc107', '#e700aa', '#2196f3'])
 
     fig10 = px.bar(thucthu_diemdanh_month, x="date_created_month",
-                   y="thucthu", color="lop_cn", barmode="group", color_discrete_sequence=['#ffc107', '#07a203', '#2196f3', '#e700aa'], text='thucthu')
+                   y="thucthu", color="lop_cn", barmode="group", color_discrete_sequence=['#ffc107', '#07a203', '#2196f3', '#e700aa'], text="thucthu")
     # update the chart layout
     fig9.update_layout(title='Thực thu điểm danh theo ngày',
                        xaxis_title='Ngày', yaxis_title='Thực thu')
@@ -447,7 +458,6 @@ if authentication_status:
 
     # Create grand total
     salary_thucthu_grand_total = grand_total(salary_thucthu, 'lop_cn')
-
     # Create percent
     salary_thucthu_grand_total['percent'] = salary_thucthu_grand_total.fixed_overtime / \
         salary_thucthu_grand_total.thucthu * 100
@@ -455,7 +465,6 @@ if authentication_status:
         salary_thucthu_grand_total['percent'], 2)
     salary_thucthu_grand_total = rename_lop(
         salary_thucthu_grand_total, 'lop_cn')
-
     # salary_thucthu_grand_total.to_excel(
     #     'thucthu_ketthuc.xlsx', sheet_name='thucthu_ketthuc', engine="xlsxwriter", index=False)
 
@@ -629,6 +638,12 @@ if authentication_status:
     salary_thucthu_grand_total['Tổng lương / thực thu'] = salary_thucthu_grand_total['Tổng lương / thực thu'].apply(
         lambda x: '{:.2%}'.format(x/100))
 
+    # define a function
+    @st.cache_data()
+    def thousands_divider(df, col):
+        df[col] = df[col].apply(
+            lambda x: '{:,.0f}'.format(x))
+        return df
     thucthu_hocvien_lop = thousands_divider(
         thucthu_hocvien_lop, 'tổng thực thu')
     thucthu_hocvien_lop = thousands_divider(
@@ -641,14 +656,18 @@ if authentication_status:
 
     thucthu_hocvien_lop.index.names = ['Chi nhánh']
     # Show tables
+    # st.dataframe(salary_thucthu_grand_total.set_index(
+    #     "Chi nhánh"), use_container_width=True)
     st.plotly_chart(fig2, use_container_width=True)
     st.dataframe(thucthu_hocvien_lop.drop(["ketoan_coso", "total_students", "total_classes", "thucthu_div_hocvien", "thucthu_div_lophoc"],
                                           axis=1).style.background_gradient().set_precision(0), use_container_width=True)
     # Show Chi nhanh by 2 columns
+    st.plotly_chart(fig10, use_container_width=True)
+    st.plotly_chart(fig9, use_container_width=True)
 
-    left_column, right_column = st.columns([1, 2])
-    left_column.plotly_chart(fig10, use_container_width=True)
-    right_column.plotly_chart(fig9, use_container_width=True)
+    # left_column, right_column = st.columns([1, 2])
+    # left_column.plotly_chart(fig10, use_container_width=True)
+    # right_column.plotly_chart(fig9, use_container_width=True)
     # left_column, right_column = st.columns(2)
     # left_column.plotly_chart(fig7, use_container_width=True)
     # right_column.plotly_chart(fig8, use_container_width=True)
