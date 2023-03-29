@@ -148,7 +148,7 @@ if authentication_status:
     # Tổng quan bảo lưu
     st.subheader("Tổng quan bảo lưu")
     st.dataframe(df.style.background_gradient(
-    ).set_precision(0), width=1200, height=210)
+    ).set_precision(0), use_container_width=True)
     # st.write(baoluu)
     fig = px.bar(baoluu, y='Họ Tên', x='Còn lại', text='Còn lại',
                  color='group ngày còn lại')

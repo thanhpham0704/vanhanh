@@ -282,7 +282,7 @@ if authentication_status:
     with st.form(key='filter_form'):
         col1, col2 = st.columns(2)
         nhom_kem = col1.selectbox(label="Select loại lớp:", options=list(
-            now_future["group_kh_ten"].unique()), index=0)
+            now_future["group_kh_ten"].unique()), index=1)
         lop_id = col2.multiselect(label='Select lớp id', options=list(
             now_future.query("group_kh_ten == @nhom_kem")['lop_id'].unique()))
         submit_button = st.form_submit_button(

@@ -53,17 +53,20 @@ if authentication_status:
     def collect_data(link):
         return(pd.DataFrame((requests.get(link).json())))
 
-    @st.cache_data()
+    # @st.cache_data()
+
     def rename_lop(dataframe, column_name):
         dataframe[column_name] = dataframe[column_name].replace(
             {1: "Hoa Cúc", 2: "Gò Dầu", 3: "Lê Quang Định", 5: "Lê Hồng Phong"})
         return dataframe
 
-    @st.cache_data()
+    # @st.cache_data()
+
     def exclude(dataframe, columns_name):
         return(dataframe.loc[:, ~dataframe.columns.isin(columns_name)])
 
-    @st.cache_data()
+    # @st.cache_data()
+
     def grand_total(dataframe, column):
         # create a new row with the sum of each numerical column
         totals = dataframe.select_dtypes(include=[float, int]).sum()
@@ -72,7 +75,8 @@ if authentication_status:
         dataframe = dataframe.append(totals, ignore_index=True)
         return dataframe
 
-    @st.cache_data()
+    # @st.cache_data()
+
     def get_link(dataframe):
         # Get url
         url = "https://vietop.tech/admin/hocvien/view/"
@@ -101,7 +105,7 @@ if authentication_status:
     orders_cholop = orders.query("ketoan_active == 0")
     # Lấy thông tin học viên cho ds chờ lớp
     df = orders_cholop.merge(hocvien, on='hv_id', how='left', suffixes=('_orders', '_hocvien'))[['created_at_orders', 'kh_id', 'hv_id', 'user_id', 'ketoan_id', 'hv_coso', 'hv_fullname',
-                                                                                                 'dauvao_overall', 'hv_muctieu_vt', 'hv_camket', 'lop_giovang',
+                                                                                                'dauvao_overall', 'hv_muctieu_vt', 'hv_camket', 'lop_giovang',
                                                                                                  'ketoan_price', 'remaining_time', 'ketoan_sogio', 'ketoan_tientrengio', 'ketoan_details', 'hv_link']]
     # Merge users
     df = df.merge(users[['id', 'fullname']],
@@ -147,7 +151,7 @@ if authentication_status:
     # Assign to a variable
     tongcholop = df
     tongcholop.rename(columns={'hv_id_x': 'hv_id',
-                      'Họ tên': 'fullname'}, inplace=True)
+                               'Họ tên': 'fullname'}, inplace=True)
 
     # --------------------------------------------------------------PĐK 2
     # Dang hoc va baoluu
@@ -175,6 +179,7 @@ if authentication_status:
     df['Tháng tạo'] = df['Ngày tạo'].dt.month
     df['Năm tạo'] = df['Ngày tạo'].dt.year
     df['created_at'] = df['Ngày tạo'].dt.strftime('%m-%Y')
+    df = rename_lop(df, 'Chi nhánh')
     # df = df.groupby(['Năm tạo', 'Tháng tạo', 'created_at',
     #                 'PDK2', 'Phan_loai', 'free'], as_index=False).size()
     # --------------------------------------------------------------Select box
@@ -188,8 +193,6 @@ if authentication_status:
         tonghop = df.groupby(
             ['Chi nhánh', 'PDK2'], as_index=False)['hv_id_x'].count()
         tonghop = grand_total(tonghop, 'Chi nhánh')
-        tonghop = rename_lop(tonghop, 'Chi nhánh')
-        # tonghop = tonghop.set_index("Chi nhánh")
         tonghop = tonghop.rename(columns={'hv_id_x': 'Tổng học viên chờ lớp'})
         tonghop = tonghop.pivot_table(
             values='Tổng học viên chờ lớp',
@@ -219,8 +222,14 @@ if authentication_status:
         st.dataframe(tonghop.style.background_gradient().set_precision(0),
                      use_container_width=True)
         "---"
-        st.subheader("Phân bổ học viên chờ lớp theo tháng")
-        st.plotly_chart(fig)
+        left_column, right_column = st.columns(2)
+        left_column.subheader(
+            f"Phân bổ học viên chờ lớp theo tháng {phanloai}")
+        left_column.plotly_chart(fig)
+        right_column.subheader(f"Chi tiết học viên {phanloai}")
+        right_column.dataframe(df.loc[:, ['Ngày tạo', 'Chi nhánh', 'fullname', 'Đầu vào overall', 'Điểm tư vấn', 'cam kết', 'Học phí', 'Đã thu',
+                                          'Thực giờ', 'Tổng giờ khoá học', 'Tiền/giờ', 'Chi tiết', 'Tư vấn viên', 'kh_ten', 'Phan_loai', 'PDK2', 'free', 'hv_link']], height=1000,
+                               width=800)
     else:
         df = df.query("Phan_loai == @phanloai")
         tonghop = df.groupby(
@@ -256,6 +265,10 @@ if authentication_status:
 
         st.dataframe(tonghop.style.background_gradient().set_precision(0),
                      use_container_width=True)
-        "---"
-        st.subheader("Phân bổ học viên chờ lớp theo tháng")
-        st.plotly_chart(fig)
+        left_column, right_column = st.columns(2)
+        left_column.subheader(
+            f"Phân bổ học viên chờ lớp theo tháng {phanloai}")
+        left_column.plotly_chart(fig)
+        right_column.subheader(f"Chi tiết học viên {phanloai}")
+        right_column.dataframe(df.loc[:, ['Ngày tạo', 'Chi nhánh', 'fullname', 'Đầu vào overall', 'Điểm tư vấn', 'cam kết', 'Học phí', 'Đã thu',
+                                          'Thực giờ', 'Tổng giờ khoá học', 'Tiền/giờ', 'Chi tiết', 'Tư vấn viên', 'kh_ten', 'Phan_loai', 'PDK2', 'free', 'hv_link']], use_container_width=True)
