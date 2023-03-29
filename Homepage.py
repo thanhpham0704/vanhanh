@@ -434,7 +434,7 @@ if authentication_status:
     fig9.update_layout(title='Thực thu điểm danh theo ngày',
                        xaxis_title='Ngày', yaxis_title='Thực thu')
     fig10.update_layout(title='Thực thu điểm danh theo tháng',
-                        xaxis_title='Tháng', yaxis_title='Thực thu', showlegend=False)
+                        xaxis_title='Tháng', yaxis_title='Thực thu', showlegend=True)
     fig10.update_traces(hovertemplate="Thực thu: %{y:,.0f}<extra></extra>")
     # "_______________"
     fig1 = plotly_chart(thucthu_cn_rename, 'lop_cn', 'thucthu', thucthu_cn_rename['thucthu'].apply(lambda x: format(x, ',')),
@@ -594,7 +594,8 @@ if authentication_status:
         .query("date_end >= @ketoan_start_time and date_end <= @ketoan_end_time")
     thucthu_ketthuc = thucthu_ketthuc.merge(
         orders[['hv_id', 'ketoan_id']], on='ketoan_id')
-    thucthu_ketthuc
+    st.subheader("chi tiết thực thu kết thúc")
+    st.dataframe(thucthu_ketthuc)
     thucthu_ketthuc = thucthu_ketthuc.groupby("ketoan_coso", as_index=False)[
         'thực thu kết thúc'].sum()
     thucthu_ketthuc = rename_lop(thucthu_ketthuc, 'ketoan_coso')
