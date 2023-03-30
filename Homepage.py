@@ -329,11 +329,7 @@ if authentication_status:
     salary_gv_dt = salary_gv_dt.sort_values(
         "salary_ngay_cong_divided", ascending=False)
     # ----------------------# Thực thu
-    diemdanh_details = collect_data('https://vietop.tech/api/get_data/diemdanh_details')\
-        .query("phanloai == 1")  # Filter lop chính
-    diemdanh_details['date_created'] = pd.to_datetime(
-        diemdanh_details['date_created'])
-    # diemdanh_details = diemdanh_details.query("date_created > '2023-01-01'")
+
     orders = collect_data(
         'https://vietop.tech/api/get_data/orders').query("deleted_at.isnull()")
     lophoc = collect_data('https://vietop.tech/api/get_data/lophoc')
@@ -370,14 +366,30 @@ if authentication_status:
     fig6 = plotly_chart(lop_danghoc, 'lop_cn', 'total_classes', 'total_classes',
                         "Tổng lớp đang học theo chi nhánh", 'Chi nhánh', 'Lớp học')
     ""
-
     # "------------------"
 
-    # create thucthu
+    # Define a function
+    @st.cache_data(ttl=timedelta(days=365))
+    def csv_reader(file):
+        df = pd.read_csv(file)
+        df = df.query("phanloai == 1")  # Filter lop chính
+        df['date_created'] = pd.to_datetime(df['date_created'])
+        return df
 
-    diemdanh_details_filter = diemdanh_details.query(
-        'date_created >= @ketoan_start_time and date_created <= @ketoan_end_time')
-    thucthu = diemdanh_details_filter\
+    @st.cache_data(ttl=timedelta(days=1))
+    def collect_filtered_data(table, date_column='', start_time='', end_time=''):
+        link = f"https://vietop.tech/api/get_data/{table}?column={date_column}&date_start={start_time}&date_end={end_time}"
+        df = pd.DataFrame((requests.get(link).json()))
+        df[date_column] = pd.to_datetime(df[date_column])
+        return df
+
+    df = csv_reader("diemdanh_details.csv")
+    df1 = collect_filtered_data(table='diemdanh_details', date_column='date_created',
+                                start_time='2023-01-01', end_time='2025-01-01')
+    diemdanh_details = pd.concat([df, df1])
+
+    thucthu = diemdanh_details.query(
+        'date_created >= @ketoan_start_time and date_created <= @ketoan_end_time')\
         .groupby(['ketoan_id', 'lop_id', 'gv_id', 'date_created'], as_index=False)['giohoc'].sum()\
         .merge(orders, on='ketoan_id')\
         .merge(lophoc, on='lop_id')\
