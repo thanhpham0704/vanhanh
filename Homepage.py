@@ -333,7 +333,7 @@ if authentication_status:
         .query("phanloai == 1")  # Filter lop chính
     diemdanh_details['date_created'] = pd.to_datetime(
         diemdanh_details['date_created'])
-    diemdanh_details = diemdanh_details.query("date_created > '2023-01-01'")
+    # diemdanh_details = diemdanh_details.query("date_created > '2023-01-01'")
     orders = collect_data(
         'https://vietop.tech/api/get_data/orders').query("deleted_at.isnull()")
     lophoc = collect_data('https://vietop.tech/api/get_data/lophoc')
