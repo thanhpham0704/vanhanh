@@ -433,7 +433,7 @@ if authentication_status:
     # update the chart layout
     fig9.update_layout(title='Thực thu điểm danh theo ngày',
                        xaxis_title='Ngày', yaxis_title='Thực thu')
-    fig10.update_layout(title='Thực thu điểm danh theo tháng',
+    fig10.update_layout(title='Thực thu điểm danh theo tháng trong năm 2023',
                         xaxis_title='Tháng', yaxis_title='Thực thu', showlegend=True)
     fig10.update_traces(hovertemplate="Thực thu: %{y:,.0f}<extra></extra>")
     # "_______________"
