@@ -19,7 +19,7 @@ import calendar
 # with file_path.open("wb") as file:
 #     pickle.dump(hashed_passwords, file)
 
-page_title = "Thực thu"
+page_title = "Lương và thực thu"
 page_icon = ":chart_with_upwards_trend:"
 layout = "wide"
 st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
@@ -342,9 +342,9 @@ if authentication_status:
     hocvien_danghoc = rename_lop(hocvien_danghoc, 'ketoan_coso')
 
     @st.cache_data()
-    def plotly_chart(df, yvalue, xvalue, text, title, y_title, x_title, color=None):
+    def plotly_chart(df, yvalue, xvalue, text, title, y_title, x_title, color=None, discrete_sequence=None, map=None):
         fig = px.bar(df, y=yvalue,
-                     x=xvalue, text=text, color_discrete_sequence=color)
+                     x=xvalue, text=text, color=color, color_discrete_sequence=discrete_sequence, color_discrete_map=map)
         fig.update_layout(
             title=title,
             yaxis_title=y_title,
@@ -444,10 +444,11 @@ if authentication_status:
                    y="thucthu", color="lop_cn", barmode="group", color_discrete_sequence=['#ffc107', '#07a203', '#2196f3', '#e700aa'], text="thucthu")
     # update the chart layout
     fig9.update_layout(title='Thực thu điểm danh theo ngày',
-                       xaxis_title='Ngày', yaxis_title='Thực thu')
+                       xaxis_title='Ngày', yaxis_title='Thực thu điểm danh')
     fig10.update_layout(title='Thực thu điểm danh theo tháng trong năm 2023',
                         xaxis_title='Tháng', yaxis_title='Thực thu', showlegend=True)
-    fig10.update_traces(hovertemplate="Thực thu: %{y:,.0f}<extra></extra>")
+    fig10.update_traces(
+        hovertemplate="Thực thu điểm danh: %{y:,.0f}<extra></extra>")
     # "_______________"
     fig1 = plotly_chart(thucthu_cn_rename, 'lop_cn', 'thucthu', thucthu_cn_rename['thucthu'].apply(lambda x: format(x, ',')),
                         "Thực thu theo chi nhánh", 'Chi nhánh', 'Thực thu')
@@ -465,8 +466,6 @@ if authentication_status:
         overtime_fixed_salary_cn['salary_gio_cong']
 
     salary_thucthu = overtime_fixed_salary_cn.merge(thucthu_cn, on='lop_cn')
-    salary_thucthu = salary_thucthu.sort_values(
-        "lop_cn", ascending=False)
 
     # Create grand total
     salary_thucthu_grand_total = grand_total(salary_thucthu, 'lop_cn')
@@ -477,8 +476,6 @@ if authentication_status:
         salary_thucthu_grand_total['percent'], 2)
     salary_thucthu_grand_total = rename_lop(
         salary_thucthu_grand_total, 'lop_cn')
-    # salary_thucthu_grand_total.to_excel(
-    #     'thucthu_ketthuc.xlsx', sheet_name='thucthu_ketthuc', engine="xlsxwriter", index=False)
 
     salary_thucthu_grand_total.columns = ['Chi nhánh', 'Tổng lương ngày công',
                                           'Tổng lương giờ công', 'Tổng lương giáo viên', 'Thực thu điểm danh', 'Tổng lương / thực thu']
@@ -486,7 +483,15 @@ if authentication_status:
     # Create a barplot for Tỷ lệ tổng lương / thực thu theo chi nhánh
     fig2 = plotly_chart(salary_thucthu_grand_total, 'Tổng lương / thực thu', 'Chi nhánh', salary_thucthu_grand_total["Tổng lương / thực thu"].apply(
         lambda x: '{:.2%}'.format(x/100)),
-        "Tỷ lệ tổng lương / thực thu theo chi nhánh", 'Chi nhánh', 'Tổng lương / thực thu')
+        "Tỷ lệ tổng lương / thực thu theo chi nhánh", 'Chi nhánh', 'Tổng lương / thực thu', color='Chi nhánh', map={
+        'Hoa Cúc': '#ffc107',
+        'Gò Dầu': '#07a203',
+        'Lê Quang Định': '#2196f3',
+        'Lê Hồng Phong': '#e700aa',
+        'Grand total': 'white'
+    })
+    fig2.update_layout(font=dict(size=17), xaxis={
+                       'categoryorder': 'total descending'})
 
     # "_______________"
     thucthu_hocvien_lop = thucthu_cn_rename.merge(
@@ -606,8 +611,6 @@ if authentication_status:
         .query("date_end >= @ketoan_start_time and date_end <= @ketoan_end_time")
     thucthu_ketthuc = thucthu_ketthuc.merge(
         orders[['hv_id', 'ketoan_id']], on='ketoan_id')
-    st.subheader("chi tiết thực thu kết thúc")
-    st.dataframe(thucthu_ketthuc)
     thucthu_ketthuc = thucthu_ketthuc.groupby("ketoan_coso", as_index=False)[
         'thực thu kết thúc'].sum()
     thucthu_ketthuc = rename_lop(thucthu_ketthuc, 'ketoan_coso')
@@ -653,7 +656,7 @@ if authentication_status:
         lambda x: '{:.2%}'.format(x/100))
 
     # define a function
-    @st.cache_data()
+    @ st.cache_data()
     def thousands_divider(df, col):
         df[col] = df[col].apply(
             lambda x: '{:,.0f}'.format(x))
@@ -670,9 +673,8 @@ if authentication_status:
 
     thucthu_hocvien_lop.index.names = ['Chi nhánh']
     # Show tables
-    # st.dataframe(salary_thucthu_grand_total.set_index(
-    #     "Chi nhánh"), use_container_width=True)
     st.plotly_chart(fig2, use_container_width=True)
+    st.subheader("Thưc thu theo chi nhánh")
     st.dataframe(thucthu_hocvien_lop.drop(["ketoan_coso", "total_students", "total_classes", "thucthu_div_hocvien", "thucthu_div_lophoc"],
                                           axis=1).style.background_gradient().set_precision(0), use_container_width=True)
     # Show Chi nhanh by 2 columns
