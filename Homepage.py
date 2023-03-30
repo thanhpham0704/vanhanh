@@ -382,7 +382,7 @@ if authentication_status:
         .merge(orders, on='ketoan_id')\
         .merge(lophoc, on='lop_id')\
         .merge(users[['fullname', 'id']], left_on='gv_id', right_on='id')
-    thucthu_all = diemdanh_details\
+    thucthu_all = diemdanh_details.query("date_created > '2023-01-01'")\
         .groupby(['ketoan_id', 'lop_id', 'gv_id', 'date_created'], as_index=False)['giohoc'].sum()\
         .merge(orders, on='ketoan_id')\
         .merge(lophoc, on='lop_id')\
