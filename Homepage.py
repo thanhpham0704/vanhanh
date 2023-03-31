@@ -28,7 +28,7 @@ st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
 names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành"]
 usernames = ["thanhpham", "tampham", "vietopvanhanh"]
 
-# Load hashed passwords
+# Load hashed password
 file_path = Path(__file__).parent / 'hashed_pw.pkl'
 with file_path.open("rb") as file:
     hashed_passwords = pickle.load(file)
