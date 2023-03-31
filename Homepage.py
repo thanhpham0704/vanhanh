@@ -390,20 +390,16 @@ if authentication_status:
 
     thucthu = diemdanh_details.query(
         'date_created >= @ketoan_start_time and date_created <= @ketoan_end_time')\
-        .groupby(['ketoan_id', 'lop_id', 'gv_id', 'date_created'], as_index=False)['giohoc'].sum()\
-        .merge(orders, on='ketoan_id')\
-        .merge(lophoc, on='lop_id')\
-        .merge(users[['fullname', 'id']], left_on='gv_id', right_on='id')
-    thucthu_all = diemdanh_details.query("date_created > '2023-01-01'")\
-        .groupby(['ketoan_id', 'lop_id', 'gv_id', 'date_created'], as_index=False)['giohoc'].sum()\
-        .merge(orders, on='ketoan_id')\
+        .groupby(['ketoan_id', 'lop_id', 'gv_id', 'date_created', 'price'], as_index=False)['giohoc'].sum()\
         .merge(lophoc, on='lop_id')\
         .merge(users[['fullname', 'id']], left_on='gv_id', right_on='id')
 
-    thucthu['thucthu'] = thucthu['giohoc'] * thucthu['ketoan_tientrengio']
+    thucthu_all = diemdanh_details.query("date_created > '2023-01-01'")\
+        .groupby(['ketoan_id', 'lop_id', 'gv_id', 'date_created', 'price'], as_index=False)['giohoc'].sum()\
+        .merge(lophoc, on='lop_id')\
+        .merge(users[['fullname', 'id']], left_on='gv_id', right_on='id')
+
     thucthu['date_created_month'] = thucthu['date_created'].dt.month_name()
-    thucthu_all['thucthu'] = thucthu_all['giohoc'] * \
-        thucthu_all['ketoan_tientrengio']
     thucthu_all['date_created_month'] = thucthu_all['date_created'].dt.month_name()
 
     new_order = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -413,35 +409,35 @@ if authentication_status:
         thucthu_all['date_created_month'], categories=new_order, ordered=True)
     # Groupby giaovien
     thucthu_gv = thucthu.groupby(['id', 'fullname'], as_index=False)[
-        'thucthu'].sum()
+        'price'].sum()
     # Groupby cn
-    thucthu_cn = thucthu.groupby(['lop_cn'], as_index=False)['thucthu'].sum()
+    thucthu_cn = thucthu.groupby(['lop_cn'], as_index=False)['price'].sum()
     thucthu_cn_rename = thucthu.groupby(
-        ['lop_cn'], as_index=False)['thucthu'].sum()
+        ['lop_cn'], as_index=False)['price'].sum()
     thucthu_cn_rename = rename_lop(thucthu_cn_rename, 'lop_cn')
 
     # Thực thu theo giáo viên và chi nhánh
     thucthu_details = thucthu.groupby(
-        ['id', 'fullname', 'lop_cn'], as_index=False)['thucthu'].sum()
+        ['id', 'fullname', 'lop_cn'], as_index=False)['price'].sum()
     # "_______________"
 
     @st.cache_data()
     def thucthu_time(dataframe, column):
         df = dataframe.groupby(['lop_cn', column], as_index=False)[
-            'thucthu'].sum()
+            'price'].sum()
         df.lop_cn = df.lop_cn.replace(
             {1: "Hoa Cúc", 2: "Gò Dầu", 3: "Lê Quang Định", 5: "Lê Hồng Phong"})
         return df
     thucthu_diemdanh_ngay = thucthu_time(thucthu, 'date_created')
     thucthu_diemdanh_ngay = thucthu_diemdanh_ngay.pivot(
-        index='date_created', columns='lop_cn', values='thucthu')
+        index='date_created', columns='lop_cn', values='price')
     thucthu_diemdanh_month = thucthu_time(thucthu_all, 'date_created_month')
     # Thực thu điểm danh theo ngày và tháng
     fig9 = px.bar(thucthu_diemdanh_ngay, x=thucthu_diemdanh_ngay.index, y=thucthu_diemdanh_ngay.columns, barmode='stack',
                   color_discrete_sequence=['#07a203', '#ffc107', '#e700aa', '#2196f3'])
 
     fig10 = px.bar(thucthu_diemdanh_month, x="date_created_month",
-                   y="thucthu", color="lop_cn", barmode="group", color_discrete_sequence=['#ffc107', '#07a203', '#2196f3', '#e700aa'], text="thucthu")
+                   y="price", color="lop_cn", barmode="group", color_discrete_sequence=['#ffc107', '#07a203', '#2196f3', '#e700aa'], text="price")
     # update the chart layout
     fig9.update_layout(title='Thực thu điểm danh theo ngày',
                        xaxis_title='Ngày', yaxis_title='Thực thu điểm danh')
@@ -450,7 +446,7 @@ if authentication_status:
     fig10.update_traces(
         hovertemplate="Thực thu điểm danh: %{y:,.0f}<extra></extra>")
     # "_______________"
-    fig1 = plotly_chart(thucthu_cn_rename, 'lop_cn', 'thucthu', thucthu_cn_rename['thucthu'].apply(lambda x: format(x, ',')),
+    fig1 = plotly_chart(thucthu_cn_rename, 'lop_cn', 'price', thucthu_cn_rename['price'].apply(lambda x: format(x, ',')),
                         "Thực thu theo chi nhánh", 'Chi nhánh', 'Thực thu')
 
     # "_______________" Tính tổng lương
@@ -471,7 +467,7 @@ if authentication_status:
     salary_thucthu_grand_total = grand_total(salary_thucthu, 'lop_cn')
     # Create percent
     salary_thucthu_grand_total['percent'] = salary_thucthu_grand_total.fixed_overtime / \
-        salary_thucthu_grand_total.thucthu * 100
+        salary_thucthu_grand_total.price * 100
     salary_thucthu_grand_total['percent'] = round(
         salary_thucthu_grand_total['percent'], 2)
     salary_thucthu_grand_total = rename_lop(
@@ -498,9 +494,9 @@ if authentication_status:
         hocvien_danghoc, left_on='lop_cn', right_on='ketoan_coso')\
         .merge(lop_danghoc, on='lop_cn')
     thucthu_hocvien_lop['thucthu_div_hocvien'] = round(
-        thucthu_hocvien_lop['thucthu'] / thucthu_hocvien_lop['total_students'], 0)
+        thucthu_hocvien_lop['price'] / thucthu_hocvien_lop['total_students'], 0)
     thucthu_hocvien_lop['thucthu_div_lophoc'] = round(
-        thucthu_hocvien_lop['thucthu'] / thucthu_hocvien_lop['total_classes'], 0)
+        thucthu_hocvien_lop['price'] / thucthu_hocvien_lop['total_classes'], 0)
 
     # fig7 = plotly_chart(thucthu_hocvien_lop, 'lop_cn', 'thucthu_div_hocvien', thucthu_hocvien_lop['thucthu_div_hocvien'].apply(lambda x: format(x, ',')),
     #                     "Trung bình thực thu 1 học viên", 'Chi nhánh', 'Thực thu / học viên')
@@ -518,13 +514,13 @@ if authentication_status:
         df['salary_ngay_cong_divided']
     gv_thucthu_cs = df.merge(thucthu_cn, on='lop_cn')
     gv_thucthu_cs['percent'] = round(gv_thucthu_cs['fixed_overtime'] /
-                                     gv_thucthu_cs['thucthu'] * 100, 2)
+                                     gv_thucthu_cs['price'] * 100, 2)
     # "_______________"
     # salary_merge = st.session_state['salary_merge']
     gv_thucthu_gv = gv_thucthu_cs.groupby(['id_gg', 'Họ và tên'], as_index=False)['fixed_overtime'].sum()\
         .merge(thucthu_gv, left_on='id_gg', right_on='id', how='left')
     gv_thucthu_gv['percent'] = round(gv_thucthu_gv['fixed_overtime'] /
-                                     gv_thucthu_gv['thucthu'] * 100, 2)
+                                     gv_thucthu_gv['price'] * 100, 2)
 
     gv_thucthu_gv = gv_thucthu_gv.merge(salary, left_on='id', right_on='id_gg')
 
@@ -634,7 +630,7 @@ if authentication_status:
         .merge(thucthu_ketthuc, left_on='ketoan_coso', right_on='ketoan_coso')
     # Renam thucthu => thuc thu diem danh
     thucthu_hocvien_lop = thucthu_hocvien_lop.rename(
-        columns={'thucthu': "thực thu điểm danh"})
+        columns={'price': "thực thu điểm danh"})
     # Fillna with 0
     thucthu_hocvien_lop.fillna(0, inplace=True)
     # Add all thucthu
