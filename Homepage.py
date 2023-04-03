@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import plotly.express as px
 import pandas as pd
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from pathlib import Path
 import pickle
 import streamlit_authenticator as stauth
@@ -626,87 +626,95 @@ if authentication_status:
     overtime_salary_fulltime = overtime_salary.query("salary_ngay_cong != 0")
 
     # "_______________" thucthu điểm danh and chuyen phi
+
+    thucthu_hocvien_lop = thucthu_hocvien_lop.merge(
+        chuyenphi, left_on='ketoan_coso', right_on='ketoan_coso', how='left')\
+        .merge(thucthu_ketthuc, left_on='ketoan_coso', right_on='ketoan_coso')
+    # Renam thucthu => thuc thu diem danh
+    thucthu_hocvien_lop = thucthu_hocvien_lop.rename(
+        columns={'price': "thực thu điểm danh"})
+    # Fillna with 0
+    thucthu_hocvien_lop.fillna(0, inplace=True)
+    # Add all thucthu
     try:
-        thucthu_hocvien_lop = thucthu_hocvien_lop.merge(
-            chuyenphi, left_on='ketoan_coso', right_on='ketoan_coso', how='left')\
-            .merge(thucthu_ketthuc, left_on='ketoan_coso', right_on='ketoan_coso')
-        # Renam thucthu => thuc thu diem danh
-        thucthu_hocvien_lop = thucthu_hocvien_lop.rename(
-            columns={'price': "thực thu điểm danh"})
-        # Fillna with 0
-        thucthu_hocvien_lop.fillna(0, inplace=True)
-        # Add all thucthu
         thucthu_hocvien_lop['tổng thực thu'] = thucthu_hocvien_lop['thực thu chuyển phí'] + \
             thucthu_hocvien_lop['thực thu kết thúc'] + \
             thucthu_hocvien_lop['thực thu điểm danh']
-        # Add ty lệ thực thu
-        thucthu_hocvien_lop['tỷ trọng tổng thực thu'] = thucthu_hocvien_lop['tổng thực thu'].apply(
-            lambda x: round(x/thucthu_hocvien_lop['tổng thực thu'].sum()*100, 2))
-        # create a new row with the sum of each numerical column
-        totals = thucthu_hocvien_lop.select_dtypes(include=[float, int]).sum()
-        totals["lop_cn"] = "Grand total"
-        # append the new row to the dataframe
-        thucthu_hocvien_lop = thucthu_hocvien_lop.append(
-            totals, ignore_index=True)
-        # Add % in tỷ trọng tổng thực thu
-        thucthu_hocvien_lop["tỷ trọng tổng thực thu"] = thucthu_hocvien_lop["tỷ trọng tổng thực thu"].apply(
-            lambda x: '{:.2%}'.format(x/100))
-        salary_thucthu_grand_total['Tổng lương / thực thu'] = salary_thucthu_grand_total['Tổng lương / thực thu'].apply(
-            lambda x: '{:.2%}'.format(x/100))
+    except KeyError:
+        try:
+            thucthu_hocvien_lop['tổng thực thu'] = thucthu_hocvien_lop['thực thu kết thúc'] +\
+                thucthu_hocvien_lop['thực thu điểm danh']
+        except KeyError:
+            thucthu_hocvien_lop['tổng thực thu'] = thucthu_hocvien_lop['thực thu điểm danh']
 
-        # define a function
-        @ st.cache_data()
-        def thousands_divider(df, col):
-            df[col] = df[col].apply(
-                lambda x: '{:,.0f}'.format(x))
-            return df
-        thucthu_hocvien_lop = thousands_divider(
-            thucthu_hocvien_lop, 'tổng thực thu')
-        thucthu_hocvien_lop = thousands_divider(
-            thucthu_hocvien_lop, 'thực thu điểm danh')
-        thucthu_hocvien_lop = thousands_divider(
-            thucthu_hocvien_lop, 'thực thu chuyển phí')
+    # Add ty lệ thực thu
+    thucthu_hocvien_lop['tỷ trọng tổng thực thu'] = thucthu_hocvien_lop['tổng thực thu'].apply(
+        lambda x: round(x/thucthu_hocvien_lop['tổng thực thu'].sum()*100, 2))
+    # create a new row with the sum of each numerical column
+    totals = thucthu_hocvien_lop.select_dtypes(include=[float, int]).sum()
+    totals["lop_cn"] = "Grand total"
+    # append the new row to the dataframe
+    thucthu_hocvien_lop = thucthu_hocvien_lop.append(
+        totals, ignore_index=True)
+    # Add % in tỷ trọng tổng thực thu
+    thucthu_hocvien_lop["tỷ trọng tổng thực thu"] = thucthu_hocvien_lop["tỷ trọng tổng thực thu"].apply(
+        lambda x: '{:.2%}'.format(x/100))
+    salary_thucthu_grand_total['Tổng lương / thực thu'] = salary_thucthu_grand_total['Tổng lương / thực thu'].apply(
+        lambda x: '{:.2%}'.format(x/100))
+    st.plotly_chart(fig2, use_container_width=True)
+    st.subheader("Các loại thực thu theo chi nhánh")
+    # define a function
+
+    @ st.cache_data()
+    def thousands_divider(df, col):
+        df[col] = df[col].apply(
+            lambda x: '{:,.0f}'.format(x))
+        return df
+    thucthu_hocvien_lop = thousands_divider(
+        thucthu_hocvien_lop, 'tổng thực thu')
+    thucthu_hocvien_lop = thousands_divider(
+        thucthu_hocvien_lop, 'thực thu điểm danh')
+    try:
         thucthu_hocvien_lop = thousands_divider(
             thucthu_hocvien_lop, 'thực thu kết thúc')
+        thucthu_hocvien_lop = thousands_divider(
+            thucthu_hocvien_lop, 'thực thu chuyển phí')
         thucthu_hocvien_lop = thucthu_hocvien_lop.set_index("lop_cn")
-
         thucthu_hocvien_lop.index.names = ['Chi nhánh']
-
         # Show tables
-        st.plotly_chart(fig2, use_container_width=True)
-        st.subheader("Thưc thu theo chi nhánh")
         st.dataframe(thucthu_hocvien_lop.drop(["ketoan_coso", "total_students", "total_classes", "thucthu_div_hocvien", "thucthu_div_lophoc"],
                                               axis=1).style.background_gradient().set_precision(0), use_container_width=True)
-        # Show Chi nhanh by 2 columns
-        st.plotly_chart(fig10, use_container_width=True)
-        st.plotly_chart(fig9, use_container_width=True)
-
-        # left_column, right_column = st.columns([1, 2])
-        # left_column.plotly_chart(fig10, use_container_width=True)
-        # right_column.plotly_chart(fig9, use_container_width=True)
-        # left_column, right_column = st.columns(2)
-        # left_column.plotly_chart(fig7, use_container_width=True)
-        # right_column.plotly_chart(fig8, use_container_width=True)
-
-        # left_column, right_column = st.columns(2)
-        # left_column.plotly_chart(fig5, use_container_width=True)
-        # right_column.plotly_chart(fig6, use_container_width=True)
-
-        # left_column, right_column = st.columns(2)
-        # left_column.plotly_chart(fig1, use_container_width=True)
-        # right_column.plotly_chart(fig2, use_container_width=True)
-
-        left_column, right_column = st.columns(2)
-        left_column.plotly_chart(fig3, use_container_width=True)
-        right_column.plotly_chart(fig3_1, use_container_width=True)
-
-        ""
-
-        fig4 = plotly_chart(overtime_salary_fulltime[['Họ và tên', 'out_div_total']].sort_values(
-            "out_div_total", ascending=True), "Họ và tên", 'out_div_total', 'out_div_total',
-            "Tỷ lệ lương ngoài giờ / trong giờ của giáo viên fulltime", '', 'Tỷ lệ')
-        fig4.update_layout(height=800, width=800)
-        st.plotly_chart(fig4)
     except KeyError:
         st.warning(
-            f"Tháng {date(now.year, now.month, 1)} hiện tại chưa có data, bạn chọn tháng sau nhé")
+            f"Từ ngày {ketoan_start_time} đến ngày {ketoan_end_time} chưa có data thực thu chuyển phí và thực thu kết thúc")
+
+    # Show Chi nhanh by 2 columns
+    st.plotly_chart(fig10, use_container_width=True)
+    st.plotly_chart(fig9, use_container_width=True)
+
+    # left_column, right_column = st.columns([1, 2])
+    # left_column.plotly_chart(fig10, use_container_width=True)
+    # right_column.plotly_chart(fig9, use_container_width=True)
+    # left_column, right_column = st.columns(2)
+    # left_column.plotly_chart(fig7, use_container_width=True)
+    # right_column.plotly_chart(fig8, use_container_width=True)
+
+    # left_column, right_column = st.columns(2)
+    # left_column.plotly_chart(fig5, use_container_width=True)
+    # right_column.plotly_chart(fig6, use_container_width=True)
+
+    # left_column, right_column = st.columns(2)
+    # left_column.plotly_chart(fig1, use_container_width=True)
+    # right_column.plotly_chart(fig2, use_container_width=True)
+
+    left_column, right_column = st.columns(2)
+    left_column.plotly_chart(fig3, use_container_width=True)
+    right_column.plotly_chart(fig3_1, use_container_width=True)
+
+    ""
+
+    fig4 = plotly_chart(overtime_salary_fulltime[['Họ và tên', 'out_div_total']].sort_values(
+        "out_div_total", ascending=True), "Họ và tên", 'out_div_total', 'out_div_total',
+        "Tỷ lệ lương ngoài giờ / trong giờ của giáo viên fulltime", '', 'Tỷ lệ')
+    fig4.update_layout(height=800, width=800)
+    st.plotly_chart(fig4)
