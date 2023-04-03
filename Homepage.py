@@ -384,6 +384,7 @@ if authentication_status:
         return df
 
     df = csv_reader("diemdanh_details.csv")
+
     df1 = collect_filtered_data(table='diemdanh_details', date_column='date_created',
                                 start_time='2023-01-01', end_time='2025-01-01')
     diemdanh_details = pd.concat([df, df1])
