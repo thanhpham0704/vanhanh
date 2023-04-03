@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import plotly.express as px
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from pathlib import Path
 import pickle
 import streamlit_authenticator as stauth
@@ -109,35 +109,39 @@ if authentication_status:
         ['ketoan_id', 'ketoan_coso', 'remaining_time', 'ketoan_tientrengio', 'date_end'], as_index=False).giohoc.sum()
     # Add 2 more columns
     df['gio_con_lai'] = df.remaining_time - df.giohoc
-    df['thực thu kết thúc'] = df.gio_con_lai * df.ketoan_tientrengio
-    # Convert to datetime
-    df['date_end'] = pd.to_datetime(df['date_end'])
-    # Filter gioconlai > 0 and time
-    thucthu_ketthuc = df.query("gio_con_lai > 0")\
-        .query("date_end >= @ketoan_start_time and date_end <= @ketoan_end_time")
-    thucthu_ketthuc = thucthu_ketthuc.merge(
-        orders[['hv_id', 'ketoan_id']], on='ketoan_id')
+    try:
+        df['thực thu kết thúc'] = df.gio_con_lai * df.ketoan_tientrengio
+        # Convert to datetime
+        df['date_end'] = pd.to_datetime(df['date_end'])
+        # Filter gioconlai > 0 and time
+        thucthu_ketthuc = df.query("gio_con_lai > 0")\
+            .query("date_end >= @ketoan_start_time and date_end <= @ketoan_end_time")
+        thucthu_ketthuc = thucthu_ketthuc.merge(
+            orders[['hv_id', 'ketoan_id']], on='ketoan_id')
 
-    thucthu_ketthuc = rename_lop(thucthu_ketthuc, 'ketoan_coso')
-    thucthu_ketthuc_group = thucthu_ketthuc.groupby("ketoan_coso", as_index=False)[
-        'thực thu kết thúc'].sum()
-    ""
-    st.subheader("Tổng thực thu kết thúc theo chi nhánh")
+        thucthu_ketthuc = rename_lop(thucthu_ketthuc, 'ketoan_coso')
+        thucthu_ketthuc_group = thucthu_ketthuc.groupby("ketoan_coso", as_index=False)[
+            'thực thu kết thúc'].sum()
+        ""
+        st.subheader("Tổng thực thu kết thúc theo chi nhánh")
 
-    fig1 = px.bar(thucthu_ketthuc_group, x='ketoan_coso',
-                  y='thực thu kết thúc', text='thực thu kết thúc', color='ketoan_coso', color_discrete_sequence=['#07a203', '#ffc107', '#e700aa', '#2196f3', ])
-    fig1.update_layout(
-        # Increase font size for all text in the plot)
-        xaxis_title='Chi nhánh', yaxis_title='Thực thu kết thúc', showlegend=True, font=dict(size=17))
-    fig1.update_traces(
-        hovertemplate="Thực thu kết thúc: %{y:,.0f}<extra></extra>",
-        # Add thousand separators to the text label
-        texttemplate='%{text:,.0f}',
-        textposition='inside'  # Show the text label inside the bars
-    )
+        fig1 = px.bar(thucthu_ketthuc_group, x='ketoan_coso',
+                      y='thực thu kết thúc', text='thực thu kết thúc', color='ketoan_coso', color_discrete_sequence=['#07a203', '#ffc107', '#e700aa', '#2196f3', ])
+        fig1.update_layout(
+            # Increase font size for all text in the plot)
+            xaxis_title='Chi nhánh', yaxis_title='Thực thu kết thúc', showlegend=True, font=dict(size=17))
+        fig1.update_traces(
+            hovertemplate="Thực thu kết thúc: %{y:,.0f}<extra></extra>",
+            # Add thousand separators to the text label
+            texttemplate='%{text:,.0f}',
+            textposition='inside'  # Show the text label inside the bars
+        )
 
-    st.plotly_chart(fig1, use_container_width=True)
-    thucthu_ketthuc.columns = ['ketoan_id', 'chi nhánh', 'giờ đăng ký', 'tiền trên giờ',
-                               'ngày kết thúc', 'giờ đã học', 'giờ còn lại', 'thực thu kết thúc', 'hv_id']
-    st.subheader("Chi tiết thực thu kết thúc")
-    st.dataframe(thucthu_ketthuc, use_container_width=True)
+        st.plotly_chart(fig1, use_container_width=True)
+        thucthu_ketthuc.columns = ['ketoan_id', 'chi nhánh', 'giờ đăng ký', 'tiền trên giờ',
+                                   'ngày kết thúc', 'giờ đã học', 'giờ còn lại', 'thực thu kết thúc', 'hv_id']
+        st.subheader("Chi tiết thực thu kết thúc")
+        st.dataframe(thucthu_ketthuc, use_container_width=True)
+    except KeyError:
+        st.warning(
+            f"Tháng {date(now.year, now.month, 1)} hiện tại chưa có data, bạn chọn tháng trước nhé")
