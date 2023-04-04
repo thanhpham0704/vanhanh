@@ -142,6 +142,19 @@ if authentication_status:
                                    'ngày kết thúc', 'giờ đã học', 'giờ còn lại', 'thực thu kết thúc', 'hv_id']
         st.subheader("Chi tiết thực thu kết thúc")
         st.dataframe(thucthu_ketthuc, use_container_width=True)
+        import io
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            # Write each dataframe to a different worksheet.
+            thucthu_ketthuc.to_excel(writer, sheet_name='Sheet1')
+            # Close the Pandas Excel writer and output the Excel file to the buffer
+            writer.save()
+            st.download_button(
+                label="Download thực thu kết thúc worksheets",
+                data=buffer,
+                file_name="thucthu_ketthuc.xlsx",
+                mime="application/vnd.ms-excel"
+            )
     except KeyError:
         st.warning(
             f"Tháng {date(now.year, now.month, 1)} hiện tại chưa có data, bạn chọn tháng trước nhé")

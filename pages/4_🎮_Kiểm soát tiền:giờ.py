@@ -54,15 +54,13 @@ if authentication_status:
     def collect_data(link):
         return(pd.DataFrame((requests.get(link).json())))
 
-    # @st.cache_data()
-
+    @st.cache_data()
     def rename_lop(dataframe, column_name):
         dataframe[column_name] = dataframe[column_name].replace(
             {1: "Hoa Cúc", 2: "Gò Dầu", 3: "Lê Quang Định", 5: "Lê Hồng Phong"})
         return dataframe
 
-    # @st.cache_data()
-
+    @st.cache_data()
     def exclude(dataframe, columns_name):
         return(dataframe.loc[:, ~dataframe.columns.isin(columns_name)])
 
@@ -75,8 +73,7 @@ if authentication_status:
     #     dataframe = dataframe.append(totals, ignore_index=True)
     #     return dataframe
 
-    # @st.cache_data()
-
+    @st.cache_data()
     def get_link(dataframe):
         # Get url
         url = "https://vietop.tech/admin/hocvien/view/"

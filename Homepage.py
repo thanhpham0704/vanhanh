@@ -575,7 +575,7 @@ if authentication_status:
     # Add column Phi Chuyen
     chuyenphi['phí chuyển'] = chuyenphi.is_price * 0.1
     # Add column Tien con lai sau phi
-    chuyenphi['thực thu chuyển phí'] = chuyenphi.is_price - \
+    chuyenphi['còn lại sau phí'] = chuyenphi.is_price - \
         chuyenphi['phí chuyển']
     # Change data type
     chuyenphi = chuyenphi.astype(
@@ -587,7 +587,7 @@ if authentication_status:
     # Rename columns
     # chuyenphi.columns = [["created_at", "Họ tên", "ketoan_coso", "Ghi chú", "Học phí chuyển", "Phí chuyển", "Còn lại sau phí"]]
     chuyenphi = chuyenphi.groupby('ketoan_coso', as_index=False)[
-        'thực thu chuyển phí'].sum()
+        'phí chuyển'].sum()
 
     chuyenphi = rename_lop(chuyenphi, 'ketoan_coso')
 
@@ -637,7 +637,7 @@ if authentication_status:
     thucthu_hocvien_lop.fillna(0, inplace=True)
     # Add all thucthu
     try:
-        thucthu_hocvien_lop['tổng thực thu'] = thucthu_hocvien_lop['thực thu chuyển phí'] + \
+        thucthu_hocvien_lop['tổng thực thu'] = thucthu_hocvien_lop['phí chuyển'] + \
             thucthu_hocvien_lop['thực thu kết thúc'] + \
             thucthu_hocvien_lop['thực thu điểm danh']
     except KeyError:
@@ -678,9 +678,11 @@ if authentication_status:
         thucthu_hocvien_lop = thousands_divider(
             thucthu_hocvien_lop, 'thực thu kết thúc')
         thucthu_hocvien_lop = thousands_divider(
-            thucthu_hocvien_lop, 'thực thu chuyển phí')
+            thucthu_hocvien_lop, 'phí chuyển')
         thucthu_hocvien_lop = thucthu_hocvien_lop.set_index("lop_cn")
         thucthu_hocvien_lop.index.names = ['Chi nhánh']
+        thucthu_hocvien_lop = thucthu_hocvien_lop.rename(
+            columns={"phí chuyển": "thực thu chuyển phí"})
         # Show tables
         st.dataframe(thucthu_hocvien_lop.drop(["ketoan_coso", "total_students", "total_classes", "thucthu_div_hocvien", "thucthu_div_lophoc"],
                                               axis=1).style.background_gradient().set_precision(0), use_container_width=True)
