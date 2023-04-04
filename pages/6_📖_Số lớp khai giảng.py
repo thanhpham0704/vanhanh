@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import requests
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import streamlit as st
 import plotly.express as px
 from pathlib import Path
@@ -9,8 +9,8 @@ import pickle
 import streamlit_authenticator as stauth
 import plotly.graph_objects as go
 
-page_title = "Học viên mới và kết thúc"
-page_icon = "👦🏻"
+page_title = "Số lớp khai giảng"
+page_icon = "📖"
 layout = "wide"
 st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
 names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành"]
@@ -84,60 +84,55 @@ if authentication_status:
             {1: "Hoa Cúc", 2: "Gò Dầu", 3: "Lê Quang Định", 5: "Lê Hồng Phong"})
         return dataframe
 
-    orders = collect_data(
-        'https://vietop.tech/api/get_data/orders').query("deleted_at.isnull()")
-    leads = collect_data(
-        'https://vietop.tech/api/get_data/leads')
-    hocvien = collect_data(
-        'https://vietop.tech/api/get_data/hocvien').query("hv_id != 737 and deleted_at.isna()")
-    orders['date_end'] = orders['date_end'].astype('datetime64[ns]')
-    orders_ketthuc = orders[['ketoan_id', 'hv_id', 'ketoan_active', 'date_end']]\
-        .query('ketoan_active == 5 and date_end >= @ketoan_start_time and date_end <= @ketoan_end_time')
+    # Get khoahoc
+    khoahoc = collect_data('https://vietop.tech/api/get_data/khoahoc')
+    # Get a response
+    lophoc = collect_data('https://vietop.tech/api/get_data/lophoc')
 
-    orders_conlai = orders[['ketoan_id', 'hv_id']][orders.ketoan_active.isin(
-        [0, 1, 4])]  # .query('created_at > "2022-10-01"')
-    hv_conlai = hocvien[['hv_id']].merge(orders_conlai, on='hv_id')
-    orders_kt_that = orders_ketthuc[~orders_ketthuc['hv_id'].isin(
-        hv_conlai['hv_id'])]
-    orders_kt_that = orders_kt_that.merge(
-        hocvien[['hv_id', 'hv_coso', 'hv_fullname', 'hv_email']], on='hv_id')
-    orders_kt_that.drop("ketoan_active", axis=1, inplace=True)
-    orders_kt_that['status'] = 'Kết thúc thật'
-    # Subset and merge leads
-    hocvien['hv_ngayhoc'] = hocvien['hv_ngayhoc'].astype("datetime64[ns]")
-    hv_october = hocvien[['hv_id', 'hv_fullname', 'hv_coso', 'hv_ngayhoc']][hocvien.hv_ngayhoc.notnull()]\
-        .query('hv_ngayhoc >= @ketoan_start_time and hv_ngayhoc <= @ketoan_end_time')\
-        .merge(leads[['hv_id']], on='hv_id', how='left')
+    df = lophoc.merge(khoahoc[['kh_id', 'kh_ten']], on='kh_id', how='inner')
+    df = df.query("lop_type == 1 and deleted_at.isnull()")
+    df['created_at'] = df['created_at'].astype("datetime64[ns]")
+    df = df.query(
+        "created_at >= @ketoan_start_time and created_at <= @ketoan_end_time")
 
-    hv_october['status'] = 'Học viên mới'
-    # Concat moi va cu
-    new_old = pd.concat([orders_kt_that, hv_october])
-    new_old = new_old.astype(
-        {"date_end": "datetime64[ns]", "hv_ngayhoc": "datetime64[ns]"})
-    new_old['date_end_month'] = new_old['date_end'].dt.strftime('%B')
-    new_old['hv_ngayhoc_month'] = new_old['hv_ngayhoc'].dt.strftime('%B')
+    df['loai_lop'] = [
+        "LỚP NHÓM" if 'NHÓM' in i else "LỚP KÈM" if "KÈM" in i else "KHÔNG XÁC ĐỊNH" for i in df['kh_ten']]
 
-    new = new_old.query("status == 'Học viên mới'")
-    old = new_old.query("status == 'Kết thúc thật'")
-    new = rename_lop(new, 'hv_coso')
-    old = rename_lop(old, 'hv_coso')
-    new = new.drop_duplicates().groupby(
-        ["hv_coso", "hv_ngayhoc_month"], as_index=False).size()
-    new_total = grand_total(new, 'hv_coso')
+    df['lop_status'] = df['lop_status'].replace(
+        {2: "OFFLINE", 3: "KẾT THÚC", 4: "ONLINE"})
 
-    old = old.drop_duplicates().groupby(
-        ["hv_coso", "date_end_month"], as_index=False).size()
-    old_total = grand_total(old, 'hv_coso')
-    # Create 2 columns
-    col1, col2 = st.columns(2, gap='large')
-    col1.subheader("Học viên mới")
-    col1.dataframe(new_total, use_container_width=True)
-    col2.subheader("Học viên kết thúc thật")
-    col2.dataframe(old_total, use_container_width=True)
-
-    labels = ['Hv_mới', 'Kết thúc thât']
-    values = [new.iloc[:, 2].sum(), old.iloc[:, 2].sum()]
-
-    # pull is given as a fraction of the pie radius
-    fig = go.Figure(data=[go.Pie(labels=labels, values=values, pull=[0, 0.1])])
-    st.plotly_chart(fig)
+    # Create Month
+    # df['created_at'] = df['created_at'].astype("datetime64[ns]")
+    # df['created_at_month'] = df['created_at'].dt.strftime('%-m')
+    # df['created_at_year'] = df['created_at'].dt.strftime('%-Y')
+    # df['lop_end'] = df['lop_end'].astype("datetime64[ns]")
+    # df['lop_end_month'] = df['lop_end'].dt.strftime('%-m')
+    # df['lop_end_year'] = df['created_at'].dt.strftime('%-Y')
+    # display(lophoc_2023.head())
+    # total class open
+    lophoc_count = df
+    df['created_at'] = df['created_at'].apply(
+        lambda x: date(x.year, x.month, 1))
+    df = rename_lop(df, 'lop_cn')
+    df = df.groupby(['lop_id', 'lop_cn', 'lop_status', 'loai_lop',
+                    'created_at'], as_index=False).size()
+    df = grand_total(df, 'lop_cn')
+    df_group = df.groupby("lop_cn", as_index=False)['size'].sum()
+    # Create bar_chart
+    fig1 = px.bar(df_group, x='lop_cn',
+                  y='size', text='size', color='lop_cn', color_discrete_map={'Gò Dầu': '#07a203', 'Hoa Cúc': '#ffc107', 'Lê Hồng Phong': '#e700aa', 'Lê Quang Định': '#2196f3', 'Grand total': "White"})
+    fig1.update_layout(
+        # Increase font size for all text in the plot)
+        xaxis_title='Chi nhánh', yaxis_title='Số lớp khai giảng', showlegend=True, font=dict(size=17), xaxis={'categoryorder': 'total descending'})
+    fig1.update_traces(
+        hovertemplate="Số lớp khai giảng: %{y:,.0f}<extra></extra>",
+        # Add thousand separators to the text label
+        texttemplate='%{text:,.0f}',
+        textposition='inside')  # Show the text label inside the bars
+    st.subheader("Số lớp khai giảng theo chi nhánh")
+    st.plotly_chart(fig1, use_container_width=True)
+    df = df.set_index("lop_id")
+    "---"
+    st.subheader(
+        f"Chi tiết lớp khai giảng")
+    st.dataframe(df, use_container_width=True)

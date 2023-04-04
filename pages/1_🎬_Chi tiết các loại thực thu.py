@@ -153,7 +153,7 @@ if authentication_status:
                       y='thực thu kết thúc', text='thực thu kết thúc', color='ketoan_coso', color_discrete_map={'Gò Dầu': '#07a203', 'Hoa Cúc': '#ffc107', 'Lê Hồng Phong': '#e700aa', 'Lê Quang Định': '#2196f3', 'Grand total': "White"})
         fig1.update_layout(
             # Increase font size for all text in the plot)
-            xaxis_title='Chi nhánh', yaxis_title='Thực thu kết thúc', showlegend=True, font=dict(size=17))
+            xaxis_title='Chi nhánh', yaxis_title='Thực thu kết thúc', showlegend=True, font=dict(size=17), xaxis={'categoryorder': 'total descending'})
         fig1.update_traces(
             hovertemplate="Thực thu kết thúc: %{y:,.0f}<extra></extra>",
             # Add thousand separators to the text label
@@ -213,7 +213,6 @@ if authentication_status:
         "created_at >= @ketoan_start_time and created_at <= @ketoan_end_time")
     # Rename columns
     chuyenphi = rename_lop(chuyenphi, 'ketoan_coso')
-    chuyenphi
     "---"
     chuyenphi.columns = ["Ngày tạo", "Họ tên học viên", "Chi nhánh",
                          "Ghi chú", "Học phí chuyển", "Phí chuyển", "Còn lại sau phí"]
@@ -227,7 +226,7 @@ if authentication_status:
                   y='Phí chuyển', text='Phí chuyển', color='Chi nhánh', color_discrete_map={'Gò Dầu': '#07a203', 'Hoa Cúc': '#ffc107', 'Lê Hồng Phong': '#e700aa', 'Lê Quang Định': '#2196f3', 'Grand total': "White"})
     fig2.update_layout(
         # Increase font size for all text in the plot)
-        xaxis_title='Chi nhánh', yaxis_title='Thực thu chuyển phí', showlegend=True, font=dict(size=17))
+        xaxis_title='Chi nhánh', yaxis_title='Thực thu chuyển phí', showlegend=True, font=dict(size=17), xaxis={'categoryorder': 'total descending'})
     fig2.update_traces(
         hovertemplate="Thực thu chuyển phí: %{y:,.0f}<extra></extra>",
         # Add thousand separators to the text label
