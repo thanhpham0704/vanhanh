@@ -79,7 +79,7 @@ if authentication_status:
             label='Filter',  use_container_width=True)
 
     # the duration between 2 dates exclude Sunday
-    duration = sum(1 for i in range((ketoan_end_time - ketoan_start_time).days)
+    duration = sum(1 for i in range((ketoan_end_time - ketoan_start_time).days + 1)
                    if (ketoan_start_time + timedelta(i)).weekday() != 6)
     # the number of days in a month exclude Sunday
     days_in_month = calendar.monthrange(
