@@ -13,24 +13,27 @@ page_title = "Số lớp khai giảng"
 page_icon = "📖"
 layout = "wide"
 st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
-names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành"]
-usernames = ["thanhpham", "tampham", "vietopvanhanh"]
+authentication_status = st.session_state['authentication_status']
+authenticator = st.session_state['authenticator']
+# names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành"]
+# usernames = ["thanhpham", "tampham", "vietopvanhanh"]
 
-# Load hashed passwords
-file_path = Path(__file__).parent / 'hashed_pw.pkl'
-with file_path.open("rb") as file:
-    hashed_passwords = pickle.load(file)
+# # Load hashed passwords
+# file_path = Path(__file__).parent / 'hashed_pw.pkl'
+# with file_path.open("rb") as file:
+#     hashed_passwords = pickle.load(file)
 
-authenticator = stauth.Authenticate(names, usernames, hashed_passwords,
-                                    "sales_dashboard", "abcdef", cookie_expiry_days=1)
+# authenticator = stauth.Authenticate(names, usernames, hashed_passwords,
+#                                     "sales_dashboard", "abcdef", cookie_expiry_days=1)
 
-name, authentication_status, username = authenticator.login("Login", "main")
+
+# name, authentication_status, username = authenticator.login("Login", "main")r
 
 if authentication_status == False:
     st.error("Username/password is incorrect")
 
 if authentication_status == None:
-    st.warning("Please enter your username and password")
+    st.warning("Please enter your username and password on the Homepage")
 
 if authentication_status:
     authenticator.logout("logout", "main")
@@ -69,6 +72,13 @@ if authentication_status:
     def collect_data(link):
         return(pd.DataFrame((requests.get(link).json())))
 
+    @st.cache_data(ttl=timedelta(days=1))
+    def collect_filtered_data(table, date_column='', start_time='', end_time=''):
+        link = f"https://vietop.tech/api/get_data/{table}?column={date_column}&date_start={start_time}&date_end={end_time}"
+        df = pd.DataFrame((requests.get(link).json()))
+        df[date_column] = pd.to_datetime(df[date_column])
+        return df
+
     @st.cache_data()
     def grand_total(dataframe, column):
         # create a new row with the sum of each numerical column
@@ -87,13 +97,12 @@ if authentication_status:
     # Get khoahoc
     khoahoc = collect_data('https://vietop.tech/api/get_data/khoahoc')
     # Get a response
-    lophoc = collect_data('https://vietop.tech/api/get_data/lophoc')
+    lophoc = collect_filtered_data(
+        table='lophoc', date_column='created_at', start_time=ketoan_start_time, end_time=ketoan_end_time)
 
     df = lophoc.merge(khoahoc[['kh_id', 'kh_ten']], on='kh_id', how='inner')
     df = df.query("lop_type == 1 and deleted_at.isnull()")
     df['created_at'] = df['created_at'].astype("datetime64[ns]")
-    df = df.query(
-        "created_at >= @ketoan_start_time and created_at <= @ketoan_end_time")
 
     df['loai_lop'] = [
         "LỚP NHÓM" if 'NHÓM' in i else "LỚP KÈM" if "KÈM" in i else "KHÔNG XÁC ĐỊNH" for i in df['kh_ten']]
