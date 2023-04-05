@@ -16,24 +16,26 @@ layout = "wide"
 st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
 
 # ----------------------------------------
-names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành"]
-usernames = ["thanhpham", "tampham", "vietopvanhanh"]
+authentication_status = st.session_state['authentication_status']
+authenticator = st.session_state['authenticator']
+# names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành"]
+# usernames = ["thanhpham", "tampham", "vietopvanhanh"]
 
-# Load hashed passwords
-file_path = Path(__file__).parent / 'hashed_pw.pkl'
-with file_path.open("rb") as file:
-    hashed_passwords = pickle.load(file)
+# # Load hashed passwords
+# file_path = Path(__file__).parent / 'hashed_pw.pkl'
+# with file_path.open("rb") as file:
+#     hashed_passwords = pickle.load(file)
 
-authenticator = stauth.Authenticate(names, usernames, hashed_passwords,
-                                    "sales_dashboard", "abcdef", cookie_expiry_days=1)
+# authenticator = stauth.Authenticate(names, usernames, hashed_passwords,
+#                                     "sales_dashboard", "abcdef", cookie_expiry_days=1)
 
-name, authentication_status, username = authenticator.login("Login", "main")
+# name, authentication_status, username = authenticator.login("Login", "main")
 
 if authentication_status == False:
     st.error("Username/password is incorrect")
 
 if authentication_status == None:
-    st.warning("Please enter your username and password")
+    st.warning("Please enter your username and password on the Homepage")
 
 if authentication_status:
     authenticator.logout("logout", "main")

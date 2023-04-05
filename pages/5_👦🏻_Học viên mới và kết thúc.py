@@ -13,24 +13,26 @@ page_title = "Học viên mới và kết thúc"
 page_icon = "👦🏻"
 layout = "wide"
 st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
-names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành"]
-usernames = ["thanhpham", "tampham", "vietopvanhanh"]
+authentication_status = st.session_state['authentication_status']
+authenticator = st.session_state['authenticator']
+# names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành"]
+# usernames = ["thanhpham", "tampham", "vietopvanhanh"]
 
-# Load hashed passwords
-file_path = Path(__file__).parent / 'hashed_pw.pkl'
-with file_path.open("rb") as file:
-    hashed_passwords = pickle.load(file)
+# # Load hashed passwords
+# file_path = Path(__file__).parent / 'hashed_pw.pkl'
+# with file_path.open("rb") as file:
+#     hashed_passwords = pickle.load(file)
 
-authenticator = stauth.Authenticate(names, usernames, hashed_passwords,
-                                    "sales_dashboard", "abcdef", cookie_expiry_days=1)
+# authenticator = stauth.Authenticate(names, usernames, hashed_passwords,
+#                                     "sales_dashboard", "abcdef", cookie_expiry_days=1)
 
-name, authentication_status, username = authenticator.login("Login", "main")
+# name, authentication_status, username = authenticator.login("Login", "main")
 
 if authentication_status == False:
     st.error("Username/password is incorrect")
 
 if authentication_status == None:
-    st.warning("Please enter your username and password")
+    st.warning("Please enter your username and password on the Homepage")
 
 if authentication_status:
     authenticator.logout("logout", "main")
@@ -124,11 +126,13 @@ if authentication_status:
     new = new.drop_duplicates().groupby(
         ["hv_coso", "hv_ngayhoc_month"], as_index=False).size()
     new_total = grand_total(new, 'hv_coso')
-
+    new_total = new_total.set_index("hv_coso")
     old = old.drop_duplicates().groupby(
         ["hv_coso", "date_end_month"], as_index=False).size()
     old_total = grand_total(old, 'hv_coso')
+    old_total = old_total.set_index("hv_coso")
     # Create 2 columns
+    ""
     col1, col2 = st.columns(2, gap='large')
     col1.subheader("Học viên mới")
     col1.dataframe(new_total, use_container_width=True)

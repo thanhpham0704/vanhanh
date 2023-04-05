@@ -11,25 +11,27 @@ page_title = "Chờ lớp"
 page_icon = "⏰"
 layout = "wide"
 st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
+authentication_status = st.session_state['authentication_status']
+authenticator = st.session_state['authenticator']
 
-names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành"]
-usernames = ["thanhpham", "tampham", "vietopvanhanh"]
+# names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành"]
+# usernames = ["thanhpham", "tampham", "vietopvanhanh"]
 
-# Load hashed passwords
-file_path = Path(__file__).parent / 'hashed_pw.pkl'
-with file_path.open("rb") as file:
-    hashed_passwords = pickle.load(file)
+# # Load hashed passwords
+# file_path = Path(__file__).parent / 'hashed_pw.pkl'
+# with file_path.open("rb") as file:
+#     hashed_passwords = pickle.load(file)
 
-authenticator = stauth.Authenticate(names, usernames, hashed_passwords,
-                                    "sales_dashboard", "abcdef", cookie_expiry_days=1)
+# authenticator = stauth.Authenticate(names, usernames, hashed_passwords,
+#                                     "sales_dashboard", "abcdef", cookie_expiry_days=1)
 
-name, authentication_status, username = authenticator.login("Login", "main")
+# name, authentication_status, username = authenticator.login("Login", "main")
 
 if authentication_status == False:
     st.error("Username/password is incorrect")
 
 if authentication_status == None:
-    st.warning("Please enter your username and password")
+    st.warning("Please enter your username and password on the Homepage")
 
 if authentication_status:
     authenticator.logout("logout", "main")
@@ -265,10 +267,10 @@ if authentication_status:
 
         st.dataframe(tonghop.style.background_gradient().set_precision(0),
                      use_container_width=True)
-        left_column, right_column = st.columns(2)
-        left_column.subheader(
+        # left_column, right_column = st.columns([2, 1])
+        st.subheader(
             f"Phân bổ học viên chờ lớp theo tháng {phanloai}")
-        left_column.plotly_chart(fig)
-        right_column.subheader(f"Chi tiết học viên {phanloai}")
-        right_column.dataframe(df.loc[:, ['Ngày tạo', 'Chi nhánh', 'fullname', 'Đầu vào overall', 'Điểm tư vấn', 'cam kết', 'Học phí', 'Đã thu',
-                                          'Thực giờ', 'Tổng giờ khoá học', 'Tiền/giờ', 'Chi tiết', 'Tư vấn viên', 'kh_ten', 'Phan_loai', 'PDK2', 'free', 'hv_link']], use_container_width=True)
+        st.plotly_chart(fig)
+        st.subheader(f"Chi tiết học viên {phanloai}")
+        st.dataframe(df.loc[:, ['Ngày tạo', 'Chi nhánh', 'fullname', 'Đầu vào overall', 'Điểm tư vấn', 'cam kết', 'Học phí', 'Đã thu',
+                                'Thực giờ', 'Tổng giờ khoá học', 'Tiền/giờ', 'Chi tiết', 'Tư vấn viên', 'kh_ten', 'Phan_loai', 'PDK2', 'free', 'hv_link']], use_container_width=True)
