@@ -277,6 +277,10 @@ if authentication_status:
     # Merge diemdanh and overtime
     sal_diem_over = sal_diem\
         .merge(overtime_melt, on=['id_gg', 'Họ và tên', 'cahoc', 'day_of_week', 'time_of_day', 'weekend_or_not'], how='inner', validate='many_to_many')
+    # st.write(sal_diem.shape)
+    # st.write(overtime_melt.shape)
+    # st.write(sal_diem_over.shape)
+
     # Drop duplicates
     sal_diem_over.drop_duplicates(inplace=True)
     # Fill na
@@ -349,7 +353,7 @@ if authentication_status:
 
     orders = collect_data(
         'https://vietop.tech/api/get_data/orders').query("deleted_at.isnull()")
-    lophoc = collect_data('https://vietop.tech/api/get_data/lophoc')
+    # lophoc = collect_data('https://vietop.tech/api/get_data/lophoc')
     hocvien = collect_data(
         'https://vietop.tech/api/get_data/hocvien').query("hv_id != 737 and deleted_at.isnull()")
     # hv đang họccd Au
