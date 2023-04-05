@@ -25,8 +25,8 @@ layout = "wide"
 st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
 
 # ----------------------------------------
-names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành"]
-usernames = ["thanhpham", "tampham", "vietopvanhanh"]
+names = ["Phạm Tấn Thành", "Phạm Minh Tâm"]
+usernames = ["thanhpham", "tampham"]
 
 # Load hashed password
 file_path = Path(__file__).parent / 'hashed_pw.pkl'
@@ -107,6 +107,21 @@ if authentication_status:
         # append the new row to the dataframe
         dataframe = dataframe.append(totals, ignore_index=True)
         return dataframe
+        # Define a function
+
+    @st.cache_data(ttl=timedelta(days=365))
+    def csv_reader(file):
+        df = pd.read_csv(file)
+        df = df.query("phanloai == 1")  # Filter lop chính
+        df['date_created'] = pd.to_datetime(df['date_created'])
+        return df
+
+    @st.cache_data(ttl=timedelta(days=1))
+    def collect_filtered_data(table, date_column='', start_time='', end_time=''):
+        link = f"https://vietop.tech/api/get_data/{table}?column={date_column}&date_start={start_time}&date_end={end_time}"
+        df = pd.DataFrame((requests.get(link).json()))
+        df[date_column] = pd.to_datetime(df[date_column])
+        return df
 
     # "---------------" Thông tin lương giáo viên
     users = collect_data('https://vietop.tech/api/get_data/users')
@@ -139,10 +154,12 @@ if authentication_status:
                            'Tổng ngày công thực tế': 'ngaycong_real_total'}, inplace=True)
 
     # "------------------"
-    gv_diemdanh = collect_data('https://vietop.tech/api/get_data/diemdanh')
+    gv_diemdanh = collect_filtered_data(
+        table='diemdanh', date_column='date_created', start_time=ketoan_start_time, end_time=ketoan_end_time)
+    # gv_diemdanh = collect_data('https://vietop.tech/api/get_data/diemdanh')
     gv_diemdanh['date_created'] = pd.to_datetime(gv_diemdanh['date_created'])
-    gv_diemdanh = gv_diemdanh.query(
-        "date_created >= @ketoan_start_time and date_created <= @ketoan_end_time")
+    # gv_diemdanh = gv_diemdanh.query(
+    #     "date_created >= @ketoan_start_time and date_created <= @ketoan_end_time")
     # Ca hoc table
     cahoc = {'cahoc': ['ca1', 'ca2', 'ca3', 'ca4', 'ca5', 'ca6'],
              'start_time': ['08:30:00', '10:30:00', '13:30:00', '15:30:00', '18:00:00', '19:45:00'],
@@ -367,22 +384,6 @@ if authentication_status:
                         "Tổng lớp đang học theo chi nhánh", 'Chi nhánh', 'Lớp học')
     ""
     # "------------------"
-
-    # Define a function
-    @st.cache_data(ttl=timedelta(days=365))
-    def csv_reader(file):
-        df = pd.read_csv(file)
-        df = df.query("phanloai == 1")  # Filter lop chính
-        df['date_created'] = pd.to_datetime(df['date_created'])
-        return df
-
-    @st.cache_data(ttl=timedelta(days=1))
-    def collect_filtered_data(table, date_column='', start_time='', end_time=''):
-        link = f"https://vietop.tech/api/get_data/{table}?column={date_column}&date_start={start_time}&date_end={end_time}"
-        df = pd.DataFrame((requests.get(link).json()))
-        df[date_column] = pd.to_datetime(df[date_column])
-        return df
-
     df = csv_reader("diemdanh_details.csv")
 
     df1 = collect_filtered_data(table='diemdanh_details', date_column='date_created',
@@ -689,7 +690,6 @@ if authentication_status:
     except KeyError:
         st.warning(
             f"Từ ngày {ketoan_start_time} đến ngày {ketoan_end_time} chưa có data thực thu chuyển phí và thực thu kết thúc")
-
     # Show Chi nhanh by 2 columns
     st.plotly_chart(fig10, use_container_width=True)
     st.plotly_chart(fig9, use_container_width=True)
@@ -720,7 +720,6 @@ if authentication_status:
         "Tỷ lệ lương ngoài giờ / trong giờ của giáo viên fulltime", '', 'Tỷ lệ')
     fig4.update_layout(height=800, width=800)
     st.plotly_chart(fig4)
-
     if 'authentication_status' not in st.session_state:
         st.session_state['authentication_status'] = authentication_status
     if 'authenticator' not in st.session_state:
