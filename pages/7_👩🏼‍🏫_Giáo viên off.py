@@ -103,5 +103,23 @@ if authentication_status:
     df = df.merge(users[['id', 'fullname', 'vietop_dept']],
                   left_on='giaovien', right_on='id')
     df = rename_lop(df, 'vietop_dept')
-    st.subheader("Danh sách giáo viên off")
-    df
+    df = df.reindex(columns=['lop_id', 'fullname', 'vietop_dept',
+                    'cahoc', 'class_status', 'module', 'date_created'])
+    df_group = df.groupby("vietop_dept", as_index=False).size()
+    df_group = grand_total(df_group, 'vietop_dept')
+    # Create bar_chart
+    fig1 = px.bar(df_group, x='vietop_dept',
+                  y='size', text='size', color='vietop_dept', color_discrete_map={'Gò Dầu': '#07a203', 'Hoa Cúc': '#ffc107', 'Lê Hồng Phong': '#e700aa', 'Lê Quang Định': '#2196f3', 'Grand total': "White"})
+    fig1.update_layout(
+        # Increase font size for all text in the plot)
+        xaxis_title='Chi nhánh', yaxis_title='Giáo viên off', showlegend=True, font=dict(size=17), xaxis={'categoryorder': 'total descending'})
+    fig1.update_traces(
+        hovertemplate="Số giáo viên off: %{y:,.0f}<extra></extra>",
+        # Add thousand separators to the text label
+        texttemplate='%{text:,.0f}',
+        textposition='inside')  # Show the text label inside the bars
+    st.subheader("Số giáo viên off theo chi nhánh")
+    st.plotly_chart(fig1, use_container_width=True)
+
+    st.subheader("Chi tiết danh sách giáo viên off")
+    st.dataframe(df.set_index('lop_id'), use_container_width=True)

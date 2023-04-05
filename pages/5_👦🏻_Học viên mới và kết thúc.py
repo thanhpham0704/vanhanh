@@ -121,27 +121,63 @@ if authentication_status:
 
     new = new_old.query("status == 'Học viên mới'")
     old = new_old.query("status == 'Kết thúc thật'")
+    # Rename hv_coso
     new = rename_lop(new, 'hv_coso')
     old = rename_lop(old, 'hv_coso')
-    new = new.drop_duplicates().groupby(
+    # Groupby
+    new_group = new.drop_duplicates().groupby(
         ["hv_coso", "hv_ngayhoc_month"], as_index=False).size()
-    new_total = grand_total(new, 'hv_coso')
+    new_group['status'] = 'mới đăng ký'
+    new_group.columns = ['hv_coso', 'date_created', 'num_student', 'status']
+    new_total = grand_total(new_group, 'hv_coso')
     new_total = new_total.set_index("hv_coso")
-    old = old.drop_duplicates().groupby(
+    # Groupby
+    old_group = old.drop_duplicates().groupby(
         ["hv_coso", "date_end_month"], as_index=False).size()
-    old_total = grand_total(old, 'hv_coso')
+    old_group['status'] = 'kết thúc thật'
+    old_group.columns = ['hv_coso', 'date_created', 'num_student', 'status']
+    old_total = grand_total(old_group, 'hv_coso')
     old_total = old_total.set_index("hv_coso")
+
+    df = pd.concat([new_group, old_group])
+    # color_discrete_map={'Gò Dầu': '#07a203', 'Hoa Cúc': '#ffc107', 'Lê Hồng Phong': '#e700aa', 'Lê Quang Định': '#2196f3', 'Grand total': "White"}
+    fig1 = px.bar(df, x='hv_coso',
+                  y='num_student', text='num_student', color='status', barmode="group")
+    fig1.update_layout(
+        # Increase font size for all text in the plot)
+        xaxis_title='Chi nhánh', yaxis_title='Thực thu kết thúc', showlegend=True, font=dict(size=17), xaxis={'categoryorder': 'total descending'})
+    fig1.update_traces(
+        hovertemplate="Thực thu kết thúc: %{y:,.0f}<extra></extra>",
+        # Add thousand separators to the text label
+        texttemplate='%{text:,.0f}',
+        textposition='inside')  # Show the text label inside the bars
+    ""
+    ""
+    # Plot a pie chart
+    labels = ['Hv_mới', 'Kết thúc thât']
+    values = [new_group.iloc[:, 2].sum(), old_group.iloc[:, 2].sum()]
+    # pull is given as a fraction of the pie radius
+    fig2 = go.Figure(
+        data=[go.Pie(labels=labels, values=values, pull=[0, 0.1])])
+    fig2.update_layout(
+        # Increase the font size of the text
+        font=dict(
+            size=20
+        ))
+
+    st.subheader("Tỷ trọng học viên mới và kết thúc thật toàn Vietop")
+    st.plotly_chart(fig2, use_container_width=True)
+    # Bar chart
+    st.subheader("Số lượng học viên cũ và kết thúc thật theo chi nhánh")
+    st.plotly_chart(fig1, use_container_width=True)
     # Create 2 columns
     ""
     col1, col2 = st.columns(2, gap='large')
-    col1.subheader("Học viên mới")
-    col1.dataframe(new_total, use_container_width=True)
-    col2.subheader("Học viên kết thúc thật")
-    col2.dataframe(old_total, use_container_width=True)
+    col1.subheader("Chi tiết học viên mới")
+    col1.dataframe(new.reindex(
+        columns=['hv_id', 'hv_fullname', 'hv_coso', 'hv_ngayhoc', 'status']), use_container_width=True)
 
-    labels = ['Hv_mới', 'Kết thúc thât']
-    values = [new.iloc[:, 2].sum(), old.iloc[:, 2].sum()]
+    col2.subheader("Chi tiết học viên kết thúc thật")
 
-    # pull is given as a fraction of the pie radius
-    fig = go.Figure(data=[go.Pie(labels=labels, values=values, pull=[0, 0.1])])
-    st.plotly_chart(fig)
+    col2.dataframe(old.reindex(
+        columns=['hv_id', 'hv_fullname', 'hv_coso', 'date_end', 'status']), use_container_width=True)
