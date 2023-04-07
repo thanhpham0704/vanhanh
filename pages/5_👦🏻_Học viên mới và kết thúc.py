@@ -13,8 +13,11 @@ page_title = "Học viên mới và kết thúc"
 page_icon = "👦🏻"
 layout = "wide"
 st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
-authentication_status = st.session_state['authentication_status']
-authenticator = st.session_state['authenticator']
+try:
+    authentication_status = st.session_state['authentication_status']
+    authenticator = st.session_state['authenticator']
+except KeyError:
+    authentication_status = None
 # names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành"]
 # usernames = ["thanhpham", "tampham", "vietopvanhanh"]
 
@@ -127,14 +130,14 @@ if authentication_status:
     # Groupby
     new_group = new.drop_duplicates().groupby(
         ["hv_coso", "hv_ngayhoc_month"], as_index=False).size()
-    new_group['status'] = 'mới đăng ký'
+    new_group['status'] = 'Mới đăng ký'
     new_group.columns = ['hv_coso', 'date_created', 'num_student', 'status']
     new_total = grand_total(new_group, 'hv_coso')
     new_total = new_total.set_index("hv_coso")
     # Groupby
     old_group = old.drop_duplicates().groupby(
         ["hv_coso", "date_end_month"], as_index=False).size()
-    old_group['status'] = 'kết thúc thật'
+    old_group['status'] = 'Kết thúc thật'
     old_group.columns = ['hv_coso', 'date_created', 'num_student', 'status']
     old_total = grand_total(old_group, 'hv_coso')
     old_total = old_total.set_index("hv_coso")

@@ -16,8 +16,12 @@ layout = "wide"
 st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
 
 # ----------------------------------------
-authentication_status = st.session_state['authentication_status']
-authenticator = st.session_state['authenticator']
+try:
+    authentication_status = st.session_state['authentication_status']
+    authenticator = st.session_state['authenticator']
+except KeyError:
+    authentication_status = None
+
 # names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành"]
 # usernames = ["thanhpham", "tampham", "vietopvanhanh"]
 
@@ -51,8 +55,8 @@ if authentication_status:
             }
             </style>
             """,
-        unsafe_allow_html=True
-    )
+        unsafe_allow_html=True)
+
     st.title(page_title + " " + page_icon)
     # Define a function
 

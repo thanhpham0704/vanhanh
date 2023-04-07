@@ -12,8 +12,11 @@ page_title = "Bảo lưu"
 page_icon = "🛟"
 layout = "wide"
 st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
-authentication_status = st.session_state['authentication_status']
-authenticator = st.session_state['authenticator']
+try:
+    authentication_status = st.session_state['authentication_status']
+    authenticator = st.session_state['authenticator']
+except KeyError:
+    authentication_status = None
 
 # names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành"]
 # usernames = ["thanhpham", "tampham", "vietopvanhanh"]
@@ -143,17 +146,17 @@ if authentication_status:
     ).set_precision(0), use_container_width=True)
     # st.write(baoluu)
     fig = px.bar(baoluu, y='Họ Tên', x='Còn lại', text='Còn lại',
-                 color='group ngày còn lại')
+                 color='group ngày còn lại', color_discrete_map={'Sẽ học lại': 'green', 'Sắp học lại': 'orange', 'Trễ học lại': 'red'})
     fig.update_traces(texttemplate='%{text:.2s}', textposition='outside')
-    fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide',
-                      height=1500,
-                      width=800)
+    fig.update_layout(uniformtext_minsize=8,
+                      uniformtext_mode='hide', height=1500)
 
     # st.plotly_chart(fig)
     "---"
-    left_column, right_column = st.columns(2)
-    left_column.subheader("Ngày còn lại trước khi học lại")
-    left_column.plotly_chart(fig, use_container_width=True)
-    right_column.subheader("Chi tiết bảo lưu")
-    right_column.dataframe(
-        baoluu.sort_values("Còn lại", ascending=True)[['Chi nhánh', 'Họ Tên', 'Còn lại', 'Lý do', 'hvbl_id']], width=600, height=1400)
+    # left_column, right_column = st.columns(2)
+    st.subheader("Ngày còn lại trước khi học lại")
+    st.warning("Quét khối để zoom in, double click để trở lại")
+    st.plotly_chart(fig, use_container_width=True)
+    st.subheader("Chi tiết bảo lưu")
+    st.dataframe(
+        baoluu.sort_values("Còn lại", ascending=True)[['Chi nhánh', 'Họ Tên', 'Còn lại', 'Lý do', 'hvbl_id']], use_container_width=True)

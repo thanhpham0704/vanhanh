@@ -25,8 +25,11 @@ st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
 #                                     "sales_dashboard", "abcdef", cookie_expiry_days=1)
 
 # name, authentication_status, username = authenticator.login("Login", "main")
-authentication_status = st.session_state['authentication_status']
-authenticator = st.session_state['authenticator']
+try:
+    authentication_status = st.session_state['authentication_status']
+    authenticator = st.session_state['authenticator']
+except KeyError:
+    authentication_status = None
 
 if authentication_status == False:
     st.error("Username/password is incorrect")

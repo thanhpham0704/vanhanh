@@ -161,10 +161,10 @@ if authentication_status:
     # gv_diemdanh = gv_diemdanh.query(
     #     "date_created >= @ketoan_start_time and date_created <= @ketoan_end_time")
     # Ca hoc table
-    cahoc = {'cahoc': ['ca1', 'ca2', 'ca3', 'ca4', 'ca5', 'ca6'],
-             'start_time': ['08:30:00', '10:30:00', '13:30:00', '15:30:00', '18:00:00', '19:45:00'],
-             'end_time': ['10:30:00', '12:30:00', '15:30:00', '17:30:00', '19:45:00', '21:30:00']}
-    cahoc = pd.DataFrame(cahoc)
+    # cahoc = {'cahoc': ['ca1', 'ca2', 'ca3', 'ca4', 'ca5', 'ca6'],
+    #          'start_time': ['08:30:00', '10:30:00', '13:30:00', '15:30:00', '18:00:00', '19:45:00'],
+    #          'end_time': ['10:30:00', '12:30:00', '15:30:00', '17:30:00', '19:45:00', '21:30:00']}
+    # cahoc = pd.DataFrame(cahoc)
     # --------------- GET DATA FROM API
 
     sh = sa.open("Nhân sự")
@@ -269,7 +269,7 @@ if authentication_status:
         ["id", "fullname", "cahoc", 'phanloai', 'day_of_week', "time_of_day", "weekend_or_not", 'lop_id'], as_index=False)['sogio'].sum()
     # Get lopcn from lophoc
     diemdanh_lop_cn = diemdanh_sum_giohoc.merge(
-        lophoc[['lop_id', 'lop_cn']], on='lop_id')
+        lophoc[['lop_id', 'lop_cn']], on='lop_id', how='inner')
 
     # "---------------"
     sal_diem = diemdanh_lop_cn.merge(
@@ -388,11 +388,15 @@ if authentication_status:
                         "Tổng lớp đang học theo chi nhánh", 'Chi nhánh', 'Lớp học')
     ""
     # "------------------"
-    df = csv_reader("diemdanh_details.csv")
+    # df = csv_reader("diemdanh_details.csv")
 
-    df1 = collect_filtered_data(table='diemdanh_details', date_column='date_created',
-                                start_time='2023-01-01', end_time='2025-01-01')
-    diemdanh_details = pd.concat([df, df1])
+    # df1 = collect_filtered_data(table='diemdanh_details', date_column='date_created',
+    #                             start_time='2023-01-01', end_time='2025-01-01')
+    # diemdanh_details = pd.concat([df, df1])
+    diemdanh_details = collect_data(
+        'https://vietop.tech/api/get_data/diemdanh_details')
+    diemdanh_details['date_created'] = diemdanh_details['date_created'].astype(
+        "datetime64[ns]")
 
     thucthu = diemdanh_details.query(
         'date_created >= @ketoan_start_time and date_created <= @ketoan_end_time')\
