@@ -100,6 +100,16 @@ if authentication_status:
         table='diemdanh', date_column='date_created', start_time=ketoan_start_time, end_time=ketoan_end_time)
     users = collect_data('https://vietop.tech/api/get_data/users')
 
+    lophoc = collect_data('https://vietop.tech/api/get_data/lophoc')
+    khoahoc = collect_data('https://vietop.tech/api/get_data/khoahoc')
+    khoahoc_me = khoahoc.query("kh_parent_id == 0 and kh_active == 1")
+    # Get kh_ten
+    lop_danghoc = lophoc.query(
+        "(lop_status == 2 or lop_status == 4) and deleted_at.isnull()")
+    kh_lop = lop_danghoc.merge(
+        khoahoc_me[['kh_id', 'kh_ten']], left_on='kh_parent', right_on='kh_id')
+
+    # Chi tiết gv_off
     df = gv_diemdanh[gv_diemdanh.class_status == 'gv_off']
     df = df[['lop_id', 'giaovien', 'cahoc',
              'class_status', 'date_created', 'module']]
@@ -108,8 +118,15 @@ if authentication_status:
     df = rename_lop(df, 'vietop_dept')
     df = df.reindex(columns=['lop_id', 'fullname', 'vietop_dept',
                     'cahoc', 'class_status', 'module', 'date_created'])
+    # Chi tiết gv_off and kh_ten
+    df_kh_ten = df.merge(kh_lop[['kh_ten', 'lop_id']], on='lop_id')
+
+    # Group gv_off by vietop_dept
     df_group = df.groupby("vietop_dept", as_index=False).size()
     df_group = grand_total(df_group, 'vietop_dept')
+    # Group gv_off by kh_ten
+    df_group_kh_ten = df_kh_ten.groupby("kh_ten", as_index=False).size()
+    df_group_kh_ten = grand_total(df_group_kh_ten, 'kh_ten')
     # Create bar_chart
     fig1 = px.bar(df_group, x='vietop_dept',
                   y='size', text='size', color='vietop_dept', color_discrete_map={'Gò Dầu': '#07a203', 'Hoa Cúc': '#ffc107', 'Lê Hồng Phong': '#e700aa', 'Lê Quang Định': '#2196f3', 'Grand total': "White"})
@@ -121,8 +138,23 @@ if authentication_status:
         # Add thousand separators to the text label
         texttemplate='%{text:,.0f}',
         textposition='inside')  # Show the text label inside the bars
-    st.subheader("Số giáo viên off theo chi nhánh")
-    st.plotly_chart(fig1, use_container_width=True)
+
+    # Create bar_chart
+    fig2 = px.bar(df_group_kh_ten, x='kh_ten',
+                  y='size', text='size')
+    fig2.update_layout(
+        # Increase font size for all text in the plot)
+        xaxis_title='Tên khoá học', yaxis_title='Lớp off', showlegend=True, font=dict(size=17), xaxis={'categoryorder': 'total descending'})
+    fig2.update_traces(
+        hovertemplate="Số lớp off: %{y:,.0f}<extra></extra>",
+        # Add thousand separators to the text label
+        texttemplate='%{text:,.0f}',
+        textposition='inside')  # Show the text label inside the bars
+    col1, col2 = st.columns(2)
+    col1.subheader("Số lớp off theo tên khoá học")
+    col1.plotly_chart(fig2, use_container_width=True)
+    col2.subheader("Số giáo viên off theo chi nhánh")
+    col2.plotly_chart(fig1, use_container_width=True)
 
     st.subheader("Chi tiết danh sách giáo viên off")
-    st.dataframe(df.set_index('lop_id'), use_container_width=True)
+    st.dataframe(df_kh_ten.set_index('lop_id'), use_container_width=True)
