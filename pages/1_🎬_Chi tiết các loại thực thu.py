@@ -106,11 +106,15 @@ if authentication_status:
     #     textposition='inside'  # Show the text label inside the bars
     # )
 
-    df = csv_reader("diemdanh_details.csv")
-    df1 = collect_filtered_data(table='diemdanh_details', date_column='date_created',
-                                start_time='2023-01-01', end_time='2025-01-01')
+    # df = csv_reader("diemdanh_details.csv")
+    # df1 = collect_filtered_data(table='diemdanh_details', date_column='date_created',
+    #                             start_time='2023-01-01', end_time='2025-01-01')
+    diemdanh_details = collect_data(
+        'https://vietop.tech/api/get_data/diemdanh_details')
+    diemdanh_details['date_created'] = diemdanh_details['date_created'].astype(
+        "datetime64[ns]")
     # Tables for analysis ------------------------------------
-    diemdanh_details = pd.concat([df, df1])
+    # diemdanh_details = pd.concat([df, df1])
     orders = collect_data('https://vietop.tech/api/get_data/orders')
 
     # Filter ------------------------------------------------
