@@ -223,7 +223,6 @@ if authentication_status:
         "created_at >= @ketoan_start_time and created_at <= @ketoan_end_time")
     # Rename columns
     chuyenphi = rename_lop(chuyenphi, 'ketoan_coso')
-    "---"
     chuyenphi.columns = ["Ngày tạo", "Họ tên học viên", "Chi nhánh",
                          "Ghi chú", "Học phí chuyển", "Phí chuyển", "Còn lại sau phí"]
 
@@ -242,6 +241,8 @@ if authentication_status:
         # Add thousand separators to the text label
         texttemplate='%{text:,.0f}',
         textposition='inside')  # Show the text label inside the bars
+    "---"
+    st.subheader("Tổng thực thu chuyển phí theo chi nhánh")
     st.plotly_chart(fig2, use_container_width=True)
 
     chuyenphi = chuyenphi.set_index("Ngày tạo")

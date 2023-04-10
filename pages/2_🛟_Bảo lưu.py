@@ -66,12 +66,25 @@ if authentication_status:
             {1: "Hoa Cúc", 2: "Gò Dầu", 3: "Lê Quang Định", 5: "Lê Hồng Phong"})
         return dataframe
 
+    @st.cache_data()
+    def get_link(dataframe):
+        # Get url
+        url = "https://vietop.tech/admin/hocvien/view/"
+        # Initiate an empty list
+        hv_link = []
+        # Loop over hv_id
+        for id in dataframe.hv_id:
+            hv_link.append(url + str(id))
+        # Assign new value to a new column
+        dataframe['hv_link'] = hv_link
+        return dataframe
+
     orders = collect_data(
         'https://vietop.tech/api/get_data/orders').query("deleted_at.isnull()")
     hocvien = collect_data(
         'https://vietop.tech/api/get_data/hocvien').query("hv_id != 737 and deleted_at.isna()")
+    hocvien = get_link(hocvien)
     req = requests.get('https://vietop.tech/api/get_data/history')
-
     req_json = req.json()
     baoluu_date = pd.DataFrame(json.loads(
         r['history_value']) for r in req_json)
@@ -116,12 +129,7 @@ if authentication_status:
                       'Ngày học lại', 'Trạng thái', 'Lý do', 'Còn lại']
     # Change data type
     baoluu['Còn lại'] = baoluu['Còn lại'].dt.days
-    # Convert to excel
 
-    # baoluu = baoluu.astype({'Ngày bảo lưu':'str', 'Ngày học lại':'str', 'Còn lại':'str'})
-    # # Upload to google sheet
-    # sh = gc.open('Vietop_datawarehouse').worksheet("baoluu")
-    # sh.update([baoluu.columns.tolist()] + baoluu.values.tolist())
     # Create group ngày còn lại
     empty = []
     for value in baoluu['Còn lại']:
@@ -139,7 +147,7 @@ if authentication_status:
 
     baoluu = baoluu.sort_values("Còn lại", ascending=False)
     baoluu = baoluu.reset_index(drop=True)
-    # baoluu = rename_lop(baoluu, 'Chi nhánh')r
+
     # Tổng quan bảo lưu
     st.subheader("Tổng quan bảo lưu")
     st.dataframe(df.style.background_gradient(
@@ -150,13 +158,49 @@ if authentication_status:
     fig.update_traces(texttemplate='%{text:.2s}', textposition='outside')
     fig.update_layout(uniformtext_minsize=8,
                       uniformtext_mode='hide', height=1500)
-
+    df = baoluu.sort_values("Còn lại", ascending=True)[
+        ['Chi nhánh', 'Họ Tên', 'Còn lại', 'Lý do', 'hvbl_id']]
     # st.plotly_chart(fig)
     "---"
     # left_column, right_column = st.columns(2)
     st.subheader("Ngày còn lại trước khi học lại")
     st.warning("Quét khối để zoom in, double click để trở lại")
     st.plotly_chart(fig, use_container_width=True)
+
+    # Bảo lưu count --------------------------------------------------------------
+    # Subset baoluu
+    solan_baoluu = history.query("object == 'baoluu'")
+    # Count baluu
+    df1 = solan_baoluu.groupby('hv_id', as_index=False).object.count()
+    # Subset giahan
+    solan_giahan = history.query("object == 'giahan'")
+    # Count gia han
+    df2 = solan_giahan.groupby("hv_id", as_index=False).object.count()
+    # Merge baoluu and giahan
+    df = df1.merge(df2, on='hv_id', how='left')
+    # Subset
+    df = df[['hv_id', 'object_x', 'object_y']]
+    # Fillna of giahan
+    df.object_y.fillna(0, inplace=True)
+    # Rename columns
+    df.rename(columns={'object_x': 'Tổng bảo lưu',
+              'object_y': 'Tổng gia hạn'}, inplace=True)
+    # Add new column
+    df['Tổng bảo lưu và gia hạn'] = df['Tổng bảo lưu'] + df['Tổng gia hạn']
+    # Change data types
+    df = df.astype(
+        {'Tổng gia hạn': "int32", 'Tổng bảo lưu và gia hạn': 'int32'})
+    # Assign to a variable
+    baoluu_count = df.sort_values("Tổng bảo lưu và gia hạn", ascending=False)
+    # subset hocvien baoluu
+    hocvien_baoluu = hocvien.query("hv_status == 'hocvien'")[
+        ['hv_id', 'hv_fullname', 'hv_coso', 'hv_link']]
+    # Merge hocvien
+    baoluu_count = baoluu_count.merge(hocvien_baoluu, on='hv_id', how='inner')
+
+    df = baoluu.sort_values("Còn lại", ascending=True)\
+        .merge(baoluu_count, left_on='hvbl_id', right_on='hv_id')
     st.subheader("Chi tiết bảo lưu")
     st.dataframe(
-        baoluu.sort_values("Còn lại", ascending=True)[['Chi nhánh', 'Họ Tên', 'Còn lại', 'Lý do', 'hvbl_id']], use_container_width=True)
+        df[['hvbl_id', 'Chi nhánh', 'Họ Tên', 'Còn lại',
+            'Tổng bảo lưu', 'Tổng gia hạn', 'Lý do', 'hv_link']].set_index("hvbl_id"), use_container_width=True)

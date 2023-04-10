@@ -150,7 +150,7 @@ if authentication_status:
         # Increase font size for all text in the plot)
         xaxis_title='Chi nhánh', yaxis_title='Thực thu kết thúc', showlegend=True, font=dict(size=17), xaxis={'categoryorder': 'total descending'})
     fig1.update_traces(
-        hovertemplate="Thực thu kết thúc: %{y:,.0f}<extra></extra>",
+        hovertemplate="Số lượng học viên: %{y:,.0f}<extra></extra>",
         # Add thousand separators to the text label
         texttemplate='%{text:,.0f}',
         textposition='inside')  # Show the text label inside the bars

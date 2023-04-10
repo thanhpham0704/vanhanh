@@ -227,14 +227,13 @@ if authentication_status:
         st.dataframe(tonghop.style.background_gradient().set_precision(0),
                      use_container_width=True)
         "---"
-        left_column, right_column = st.columns(2)
-        left_column.subheader(
+        # left_column, right_column = st.columns(2)
+        st.subheader(
             f"Phân bổ học viên chờ lớp theo tháng {phanloai}")
-        left_column.plotly_chart(fig)
-        right_column.subheader(f"Chi tiết học viên {phanloai}")
-        right_column.dataframe(df.loc[:, ['Ngày tạo', 'Chi nhánh', 'fullname', 'Đầu vào overall', 'Điểm tư vấn', 'cam kết', 'Học phí', 'Đã thu',
-                                          'Thực giờ', 'Tổng giờ khoá học', 'Tiền/giờ', 'Chi tiết', 'Tư vấn viên', 'kh_ten', 'Phan_loai', 'PDK2', 'free', 'hv_link']], height=1000,
-                               width=800)
+        st.plotly_chart(fig, use_container_width=True)
+        st.subheader(f"Chi tiết học viên {phanloai}")
+        st.dataframe(df.loc[:, ['Ngày tạo', 'Chi nhánh', 'fullname', 'Đầu vào overall', 'Điểm tư vấn', 'cam kết', 'Học phí', 'Đã thu',
+                                'Thực giờ', 'Tổng giờ khoá học', 'Tiền/giờ', 'Chi tiết', 'Tư vấn viên', 'kh_ten', 'Phan_loai', 'PDK2', 'free', 'hv_link']], use_container_width=True)
     else:
         df = df.query("Phan_loai == @phanloai")
         tonghop = df.groupby(

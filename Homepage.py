@@ -11,7 +11,6 @@ import calendar
 
 # names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành"]
 # usernames = ["thanhpham", "tampham", "vietopvanhanh"]
-# passwords = ['thanhpham0704', 'tampham1234', 'vanhanh2023']
 
 # hashed_passwords = stauth.Hasher(passwords).generate()
 
