@@ -109,12 +109,12 @@ if authentication_status:
         return dataframe
         # Define a function
 
-    @st.cache_data(ttl=timedelta(days=365))
-    def csv_reader(file):
-        df = pd.read_csv(file)
-        df = df.query("phanloai == 1")  # Filter lop chính
-        df['date_created'] = pd.to_datetime(df['date_created'])
-        return df
+    # @st.cache_data(ttl=timedelta(days=365))
+    # def csv_reader(file):
+    #     df = pd.read_csv(file)
+    #     df = df.query("phanloai == 1")  # Filter lop chính
+    #     df['date_created'] = pd.to_datetime(df['date_created'])
+    #     return df
 
     @st.cache_data(ttl=timedelta(days=1))
     def collect_filtered_data(table, date_column='', start_time='', end_time=''):

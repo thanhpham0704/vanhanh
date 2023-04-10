@@ -64,12 +64,12 @@ if authentication_status:
     def collect_data(link):
         return(pd.DataFrame((requests.get(link).json())))
 
-    @st.cache_data(ttl=timedelta(days=365))
-    def csv_reader(file):
-        df = pd.read_csv(file)
-        df = df.query("phanloai == 1")  # Filter lop chính
-        df['date_created'] = pd.to_datetime(df['date_created'])
-        return df
+    # @st.cache_data(ttl=timedelta(days=365))
+    # def csv_reader(file):
+    #     df = pd.read_csv(file)
+    #     df = df.query("phanloai == 1")  # Filter lop chính
+    #     df['date_created'] = pd.to_datetime(df['date_created'])
+    #     return df
 
     @st.cache_data(ttl=timedelta(days=1))
     def collect_filtered_data(table, date_column='', start_time='', end_time=''):
@@ -109,12 +109,12 @@ if authentication_status:
     # df = csv_reader("diemdanh_details.csv")
     # df1 = collect_filtered_data(table='diemdanh_details', date_column='date_created',
     #                             start_time='2023-01-01', end_time='2025-01-01')
+        # Tables for analysis ------------------------------------
+    # diemdanh_details = pd.concat([df, df1])
     diemdanh_details = collect_data(
         'https://vietop.tech/api/get_data/diemdanh_details')
     diemdanh_details['date_created'] = diemdanh_details['date_created'].astype(
         "datetime64[ns]")
-    # Tables for analysis ------------------------------------
-    # diemdanh_details = pd.concat([df, df1])
     orders = collect_data('https://vietop.tech/api/get_data/orders')
 
     # Filter ------------------------------------------------
