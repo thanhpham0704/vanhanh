@@ -9,7 +9,7 @@ import pickle
 import streamlit_authenticator as stauth
 import plotly.graph_objects as go
 
-page_title = "Số lớp khai giảng"
+page_title = "Giáo viên và lớp off"
 page_icon = "📖"
 layout = "wide"
 st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)

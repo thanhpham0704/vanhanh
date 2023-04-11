@@ -80,7 +80,7 @@ if authentication_status:
     df1 = df.kh_ten.value_counts(
         normalize=True)
     df1 = df1.reset_index()
-    df1['kh_ten'] = round(df1['kh_ten'] * 100)
+    df1['kh_ten'] = round(df1['kh_ten'], 2) * 100
     # Group by
     df = df.groupby(["lop_cn", "kh_ten"], as_index=False).size()
     df = df.rename(columns={"size": "total_classes"})
@@ -96,9 +96,13 @@ if authentication_status:
     df = df.rename(
         columns={"kh_ten_y": "Percentage %", "kh_ten_x": "Khoá học"})
     df = df.set_index("Khoá học")
+    df["Percentage %"] = df["Percentage %"]/100
+    df = df.style.background_gradient()
+    df = df.format({'Percentage %': '{:.2%}'})
+
+    # df = df.set_precision(0)
     st.subheader("Lớp đang học")
-    st.dataframe(df.style.background_gradient(
-    ).set_precision(0), height=250, width=1000)
+    st.dataframe(df, height=250, width=1000)
 
 
 # ------------------------------------------ Học viên đang học
@@ -124,7 +128,7 @@ if authentication_status:
     # The percentage of kh_ten
     df1 = df.groupby("kh_ten", as_index=False)['total_students'].sum()
     df1['Percentage %'] = round(df1['total_students'] /
-                                df1['total_students'].sum() * 100, 2)
+                                df1['total_students'].sum(), 2) * 100
     df1 = df1.drop("total_students", axis=1)
     df = df.pivot_table(index='kh_ten', values='total_students',
                         columns='lop_cn', aggfunc='sum', margins=True, fill_value=0)
@@ -134,8 +138,11 @@ if authentication_status:
     df = df.merge(df1, on='kh_ten', how='left')
     df = df.fillna(100)
     df = df.set_index("kh_ten")
+
+    df["Percentage %"] = df["Percentage %"]/100
+    df = df.style.background_gradient()
+    df = df.format({'Percentage %': '{:.2%}'})
     "---"
     # df = df.drop("index", axis=1)
     st.subheader("Học viên đang học")
-    st.dataframe(df.style.background_gradient(
-    ).set_precision(0), height=250, width=1000)
+    st.dataframe(df, height=250, width=1000)
