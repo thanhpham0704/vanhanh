@@ -5,7 +5,6 @@ from pathlib import Path
 import pickle
 import streamlit_authenticator as stauth
 from datetime import timedelta
-import numpy as np
 
 page_title = "Học viên và lớp đang học "
 page_icon = "💯"
@@ -147,31 +146,3 @@ if authentication_status:
     # df = df.drop("index", axis=1)
     st.subheader("Học viên đang học")
     st.dataframe(df, height=250, width=1000)
-
-    df = hocvien[['hv_id', 'hv_fullname', 'hv_email', 'hv_camket', 'hv_coso', 'hv_status']]\
-        .merge(orders[['hv_id', 'ketoan_active', 'ketoan_id', 'remaining_time', 'ketoan_price']])\
-        .query('ketoan_active == 0 or ketoan_active == 1 or ketoan_active == 4')
-    # Mapping ketoan_active
-    conditions = [(df['ketoan_active'] == 0), df['ketoan_active']
-                  == 1, df['ketoan_active'] == 4, df['ketoan_active'] == 5]
-    choices = ["Chưa học", "Đang học", "Bảo lưu", "Kết thúc"]
-    df['ketoan_active'] = np.select(conditions, choices)
-    df = rename_lop(df, 'hv_coso')
-    df = df.drop(['hv_status', 'hv_camket'], axis=1)
-
-    "---"
-    st.subheader("Danh sách học viên đang học, bảo lưu, chờ lớp")
-    st.dataframe(df.set_index("hv_id"), use_container_width=True)
-    import io
-    buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-        # Write each dataframe to a different worksheet.
-        df.to_excel(writer, sheet_name='Sheet1')
-        # Close the Pandas Excel writer and output the Excel file to the buffer
-        writer.save()
-        st.download_button(
-            label="Download danh sách hv đang học, bảo lưu, chờ lớp worksheets",
-            data=buffer,
-            file_name="danghoc_baluu_cholop.xlsx",
-            mime="application/vnd.ms-excel"
-        )
