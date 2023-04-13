@@ -60,6 +60,10 @@ if authentication_status:
         unsafe_allow_html=True
     )
     st.title(page_title + " " + page_icon)
+    # if 'authentication_status' not in st.session_state:
+    st.session_state['authentication_status'] = authentication_status
+    # if 'authenticator' not in st.session_state:
+    st.session_state['authenticator'] = authenticator
     #----------------------#
     # Filter
     now = datetime.now()
@@ -727,7 +731,3 @@ if authentication_status:
         "Tỷ lệ lương ngoài giờ / trong giờ của giáo viên fulltime", '', 'Tỷ lệ')
     fig4.update_layout(height=800, width=800)
     st.plotly_chart(fig4)
-  # if 'authentication_status' not in st.session_state:
-    st.session_state['authentication_status'] = authentication_status
-    # if 'authenticator' not in st.session_state:
-    st.session_state['authenticator'] = authenticator
