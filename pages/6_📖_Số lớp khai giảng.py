@@ -62,11 +62,10 @@ if authentication_status:
     DEFAULT_END_DATE = DEFAULT_END_DATE.replace(day=1) - timedelta(days=1)
 
     # Create a form to get the date range filters
-    with st.form(key='date_filter_form'):
-        col1, col2 = st.columns(2)
-        ketoan_start_time = col1.date_input(
+    with st.sidebar.form(key='date_filter_form'):
+        ketoan_start_time = st.date_input(
             "Select start date", value=DEFAULT_START_DATE)
-        ketoan_end_time = col2.date_input(
+        ketoan_end_time = st.date_input(
             "Select end date", value=DEFAULT_END_DATE)
         submit_button = st.form_submit_button(
             label='Filter',  use_container_width=True)

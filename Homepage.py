@@ -72,11 +72,10 @@ if authentication_status:
     DEFAULT_END_DATE = DEFAULT_END_DATE.replace(day=1) - timedelta(days=1)
 
     # Create a form to get the date range filters
-    with st.form(key='date_filter_form'):
-        col1, col2 = st.columns(2)
-        ketoan_start_time = col1.date_input(
+    with st.sidebar.form(key='date_filter_form'):
+        ketoan_start_time = st.date_input(
             "Select start date", value=DEFAULT_START_DATE)
-        ketoan_end_time = col2.date_input(
+        ketoan_end_time = st.date_input(
             "Select end date", value=DEFAULT_END_DATE)
         submit_button = st.form_submit_button(
             label='Filter',  use_container_width=True)
@@ -175,6 +174,10 @@ if authentication_status:
     offline_overtime = pd.DataFrame(worksheet.get_all_records())
     offline_overtime['date_affected'] = pd.to_datetime(
         offline_overtime['date_affected'])
+    offline_overtime['date_affected'] = offline_overtime['date_affected'].dt.date
+
+    offline_overtime = offline_overtime.query(
+        "date_affected <= @ketoan_end_time")
     offline_overtime = offline_overtime.sort_values("date_affected", ascending=False)\
         .drop_duplicates(subset='Họ và tên')
     offline_overtime.drop("date_affected", axis=1, inplace=True)
@@ -272,7 +275,7 @@ if authentication_status:
         ["id", "fullname", "cahoc", 'phanloai', 'day_of_week', "time_of_day", "weekend_or_not", 'lop_id'], as_index=False)['sogio'].sum()
     # Get lopcn from lophoc
     diemdanh_lop_cn = diemdanh_sum_giohoc.merge(
-        lophoc[['lop_id', 'lop_cn']], on='lop_id', how='inner')
+        lophoc[['lop_id', 'lop_cn']], on='lop_id')
 
     # "---------------"
     sal_diem = diemdanh_lop_cn.merge(
@@ -280,10 +283,6 @@ if authentication_status:
     # Merge diemdanh and overtime
     sal_diem_over = sal_diem\
         .merge(overtime_melt, on=['id_gg', 'Họ và tên', 'cahoc', 'day_of_week', 'time_of_day', 'weekend_or_not'], how='inner', validate='many_to_many')
-    # st.write(sal_diem.shape)
-    # st.write(overtime_melt.shape)
-    # st.write(sal_diem_over.shape)
-
     # Drop duplicates
     sal_diem_over.drop_duplicates(inplace=True)
     # Fill na
@@ -623,7 +622,6 @@ if authentication_status:
     thucthu_ketthuc = thucthu_ketthuc.groupby("ketoan_coso", as_index=False)[
         'thực thu kết thúc'].sum()
     thucthu_ketthuc = rename_lop(thucthu_ketthuc, 'ketoan_coso')
-
     # "_______________"
 
     overtime_salary = sal_diem_over_group.query('working_status_x != "Ngoài giờ"')\
@@ -701,6 +699,9 @@ if authentication_status:
     except KeyError:
         st.warning(
             f"Từ ngày {ketoan_start_time} đến ngày {ketoan_end_time} chưa có data thực thu chuyển phí và thực thu kết thúc")
+    st.subheader("Các loại Lương theo chi nhánh")
+    st.dataframe(salary_thucthu_grand_total.set_index(
+        "Chi nhánh"), use_container_width=True)
     # Show Chi nhanh by 2 columns
     st.plotly_chart(fig10, use_container_width=True)
     st.plotly_chart(fig9, use_container_width=True)
@@ -731,3 +732,6 @@ if authentication_status:
         "Tỷ lệ lương ngoài giờ / trong giờ của giáo viên fulltime", '', 'Tỷ lệ')
     fig4.update_layout(height=800, width=800)
     st.plotly_chart(fig4)
+    # st.subheader("Các loại Lương theo chi nhánh")
+    # st.dataframe(salary_thucthu_grand_total.set_index(
+    #     "Chi nhánh"), use_container_width=True)
