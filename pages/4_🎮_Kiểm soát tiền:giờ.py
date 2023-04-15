@@ -121,45 +121,6 @@ if authentication_status:
     req_json = req.json()  # Convert to list
     lophoc = pd.DataFrame(req_json)  # Convert to pandas dataframe
 
-    def lophoc_cleaner():
-        # Fill null values in pandas dataframe
-        lophoc.lop_giaovien = lophoc.lop_giaovien.fillna("[0]")
-        # Convert back to list of dictionary
-        lophoc_dict = lophoc.to_dict('records')
-        # Denested lop_giaovien
-        lop_giaovien = pd.DataFrame(json.loads(r.get('lop_giaovien'))
-                                    for r in lophoc_dict)
-        # Rename columns
-        lop_giaovien.columns = ['giaovien1', 'giaovien2', 'giaovien3']
-        # Change object to int
-        lop_giaovien = lop_giaovien.astype(
-            {'giaovien1': 'float', 'giaovien2': 'float', 'giaovien3': 'float'})
-        lop_giaovien = lop_giaovien\
-            .merge(users[['id', 'fullname']], left_on='giaovien1', right_on='id', how='left')\
-            .merge(users[['id', 'fullname']], left_on='giaovien2', right_on='id', how='left')\
-            .merge(users[['id', 'fullname']], left_on='giaovien3', right_on='id', how='left')
-
-        lop_giaovien.rename(columns={'fullname': 'giáo viên 1',
-                            "fullname_x": "giáo viên 2", "fullname_y": "giáo viên 3"}, inplace=True)
-        lop_giaovien.drop(['id_x', 'id_y'], axis='columns', inplace=True)
-        lophoc_clean = pd.merge(lophoc, lop_giaovien,
-                                left_index=True, right_index=True, how='left')
-        # Lop giaovien
-        lop_giaovien = lophoc_clean[[
-            'lop_id', 'giáo viên 1', 'giáo viên 2', 'giáo viên 3']]
-        empty = []
-        for index, row in lophoc.iterrows():
-            length = len(row['lop_thoigianhoc'])
-            empty.append(length)
-        lophoc_clean['days_in_weeks'] = empty
-        lophoc_clean = lophoc_clean.query(
-            "lop_type == 1 and deleted_at.isnull()")
-        # Exclude
-        lophoc_clean = exclude(lophoc_clean, columns_name=['lop_trogiang', 'lop_start',
-                                                           'lop_lock', 'updated_by', 'created_by', 'updated_at', 'giaovien3',
-                                                           'trogiang2', 'trogiang3'])
-        return lophoc_clean
-
     def create_chart(type, dataframe, y_axis, x_axis, text):
         fig = type(dataframe, y=y_axis,
                    x=x_axis, text=text)
@@ -172,9 +133,13 @@ if authentication_status:
         return fig
 
     # ------------------------------------------------------------ Tiền giờ của lớp
-    lophoc_clean = lophoc_cleaner()
+    lophoc_schedules = collect_data(
+        'https://vietop.tech/api/get_data/lophoc_schedules')
+    lophoc_schedules = lophoc_schedules[[
+        'lop_id', 'teacher_id', 'active']].drop_duplicates("lop_id")
     # Merge lophoc and molop
-    molop_orders = pd.merge(lophoc_clean, molop, on='lop_id', how='inner')
+    molop_orders = pd.merge(
+        lophoc, molop[['lop_id', 'ketoan_id', 'molop_active']], on='lop_id', how='inner')
     # Merge orders
     molop_orders_lophoc = pd.merge(
         orders, molop_orders, on='ketoan_id', how='inner')
@@ -188,33 +153,34 @@ if authentication_status:
     tiengiolop = tiengiolop.drop_duplicates(subset='lop_id')
     # merge khoahoc
     tiengiolop = tiengiolop.merge(
-        khoahoc, left_on='kh_id_y', right_on='kh_id', how='left')
+        khoahoc, left_on='kh_id_x', right_on='kh_id', how='left')
     # Filter
-    tiengiolop = tiengiolop.loc[:, ['days_in_weeks', 'created_at_x', 'lop_cahoc', 'kh_ten', 'lop_cn', 'lop_id', 'lop_ten', 'lop_thoigianhoc',
-                                    'lop_type', 'lop_status', 'ketoan_id_x', 'ketoan_tientrengio_x', 'giaovien1', 'giaovien2']]
+    tiengiolop = tiengiolop.loc[:, ['created_at_x', 'lop_cahoc', 'kh_ten', 'lop_cn', 'lop_id', 'lop_ten', 'lop_thoigianhoc',
+                                    'lop_type', 'lop_status', 'ketoan_id_x', 'ketoan_tientrengio_x']]
+    tiengiolop = tiengiolop.merge(lophoc_schedules, on='lop_id')
+
     # Merge users
     tiengiolop = tiengiolop.merge(
-        users[['id', 'fullname']], left_on='giaovien1', right_on='id')
+        users[['id', 'fullname']], left_on='teacher_id', right_on='id')
     tiengiolop = tiengiolop.loc[:, ~
-                                tiengiolop.columns.isin(['id', 'giaovien1'])]
+                                tiengiolop.columns.isin(['id', 'teacher_id'])]
+
     # Change columns name
-    tiengiolop.columns = ['thứ', 'Ngày mở lớp', 'ca học', 'tên khoá học', 'chi nhánh', 'lớp id',
-                          'tên lớp', 'lop_thoigianhoc', 'loại lớp', 'online/offline', 'sĩ số', 'tiền giờ', 'giáo viên1', 'giáo viên2']
+    tiengiolop.columns = ['Ngày mở lớp', 'ca học', 'tên khoá học', 'chi nhánh', 'lớp id',
+                          'tên lớp', 'lop_thoigianhoc', 'loại lớp', 'online/offline', 'ketoan_id_x', 'tiền giờ', 'active', 'giao_vien']
+
     # Mapping
     tiengiolop = rename_lop(tiengiolop, "chi nhánh")
 
-    # Merge users to get giáo viên 2
-    tiengiolop = tiengiolop.merge(
-        users[['id', 'fullname']], left_on='giáo viên1', right_on='id', how='left')
     # Drop used columns
-    tiengiolop.drop(['giáo viên1', 'id'], axis=1, inplace=True)
+    tiengiolop.drop(['active', 'ketoan_id_x'], axis=1, inplace=True)
     # Convert to excel
     # tiengiolop.to_excel('Danh sách tiền giờ.xlsx', sheet_name='tiengio',engine="xlsxwriter", index=False)
     # st.text("tiengiocualop")
     # st.write(tiengiolop.shape)
     # st.write(tiengiolop)
-    tiengio_giaovien = tiengiolop.groupby('giáo viên2', as_index=False)['tiền giờ'].sum()\
-        # .to_excel('tiengio_giaovien.xlsx', sheet_name='tiengio',engine="xlsxwriter", index=False)
+    tiengio_giaovien = tiengiolop.groupby(
+        'giao_vien', as_index=False)['tiền giờ'].sum()
 
     # ------------------------------------------------------------ Giờ còn lại của từng học viên
 
@@ -223,7 +189,7 @@ if authentication_status:
         groupby("ketoan_id", as_index=False).agg({'giohoc': 'sum'})
 
     # Merge hocvien, molop, lophoc, users and orders
-    df = lophoc_clean.query("(lop_status == 2 or lop_status == 4) and deleted_at.isnull()").\
+    df = lophoc.query("(lop_status == 2 or lop_status == 4) and deleted_at.isnull()").\
         merge(molop, on="lop_id", how='inner').query("molop_active == 1").\
         merge(orders, on="ketoan_id").query("ketoan_active == 1").\
         merge(hocvien, left_on="hv_id_y", right_on='hv_id').\
@@ -283,8 +249,8 @@ if authentication_status:
     # Create a select box for phan loai
     with st.form(key='filter_form'):
         col1, col2 = st.columns(2)
-        nhom_kem = col1.selectbox(label="Select loại lớp:", options=list(
-            now_future["group_kh_ten"].unique()), index=1)
+        nhom_kem = col1.selectbox(
+            label="Select loại lớp:", options=['KHOÁ NHÓM'])
         lop_id = col2.multiselect(label='Select lớp id', options=list(
             now_future.query("group_kh_ten == @nhom_kem")['lop_id'].unique()))
         submit_button = st.form_submit_button(
@@ -293,7 +259,7 @@ if authentication_status:
     now_future = now_future.query("group_kh_ten == @nhom_kem")
     # -------------------------------------------------- merge hiện tại và tương lai và tiền giờ từng học viên
     df = now_future.merge(gioconlai, on='lop_id')
-    df = df[['lop_id', 'ca học', 'giáo viên2', 'hv_fullname',
+    df = df[['lop_id', 'ca học', 'giao_vien', 'hv_fullname',
              'ketoan_tientrengio', 'giờ còn lại']].query('lop_id == @lop_id')
     df = df.set_index("lop_id")
     ""
@@ -313,9 +279,9 @@ if authentication_status:
         legend_title="")
     fig3.update_traces(texttemplate='%{text:.2s}', textposition='top left')
 
-    fig1.update_layout(title="Tiền giờ hiện tại",
+    fig2.update_layout(title="Tiền giờ hiện tại",
                        xaxis_title="Tiền giờ hiện tại",)
-    fig2.update_layout(title="Tiền giờ tương lai",
+    fig1.update_layout(title="Tiền giờ tương lai",
                        xaxis_title="Tiền giờ tương lai",)
     # fig3 = create_chart(px.area, now_future, 'lớp id', 'diff_percent', 'diff')
     # Reverse the y-axis
