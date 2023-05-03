@@ -70,7 +70,7 @@ if authentication_status:
 
     @st.cache_data(ttl=timedelta(days=1))
     def collect_data(link):
-        return(pd.DataFrame((requests.get(link).json())))
+        return (pd.DataFrame((requests.get(link).json())))
 
     @st.cache_data()
     def grand_total(dataframe, column):
@@ -165,7 +165,6 @@ if authentication_status:
         font=dict(
             size=20
         ))
-
     st.subheader("Tỷ trọng học viên mới và kết thúc thật toàn Vietop")
     st.plotly_chart(fig2, use_container_width=True)
     # Bar chart
@@ -177,8 +176,31 @@ if authentication_status:
     col1.subheader("Chi tiết học viên mới")
     col1.dataframe(new.reindex(
         columns=['hv_id', 'hv_fullname', 'hv_coso', 'hv_ngayhoc', 'status']), use_container_width=True)
-
+    import io
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+        # Write each dataframe to a different worksheet.
+        new.to_excel(writer, sheet_name='Sheet1')
+        # Close the Pandas Excel writer and output the Excel file to the buffer
+        writer.save()
+        col1.download_button(
+            label="Download học viên mới worksheets",
+            data=buffer,
+            file_name="hocvien_moi.xlsx",
+            mime="application/vnd.ms-excel"
+        )
     col2.subheader("Chi tiết học viên kết thúc thật")
 
     col2.dataframe(old.reindex(
         columns=['hv_id', 'hv_fullname', 'hv_coso', 'date_end', 'status']), use_container_width=True)
+    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+        # Write each dataframe to a different worksheet.
+        old.to_excel(writer, sheet_name='Sheet1')
+        # Close the Pandas Excel writer and output the Excel file to the buffer
+        writer.save()
+        col2.download_button(
+            label="Download kết thúc thật worksheets",
+            data=buffer,
+            file_name="ketthuc_that.xlsx",
+            mime="application/vnd.ms-excel"
+        )

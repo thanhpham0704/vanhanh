@@ -64,7 +64,7 @@ if authentication_status:
     st.session_state['authentication_status'] = authentication_status
     # if 'authenticator' not in st.session_state:
     st.session_state['authenticator'] = authenticator
-    #----------------------#
+    # ----------------------#
     # Filter
     now = datetime.now()
     DEFAULT_START_DATE = datetime(now.year, now.month, 1)
@@ -89,11 +89,11 @@ if authentication_status:
     sundays_in_month = sum(1 for day in range(1, days_in_month + 1) if datetime(
         ketoan_start_time.year, ketoan_start_time.month, day).weekday() == 6)
     days_excluding_sundays = days_in_month - sundays_in_month
-    #----------------------#
+    # ----------------------#
 
     @st.cache_data(ttl=timedelta(days=1))
     def collect_data(link):
-        return(pd.DataFrame((requests.get(link).json())))
+        return (pd.DataFrame((requests.get(link).json())))
 
     @st.cache_data()
     def rename_lop(dataframe, column_name):
@@ -118,7 +118,7 @@ if authentication_status:
     #     df['date_created'] = pd.to_datetime(df['date_created'])
     #     return df
 
-    @st.cache_data(ttl=timedelta(days=1))
+    @st.cache_data(ttl=timedelta(days=0.1))
     def collect_filtered_data(table, date_column='', start_time='', end_time=''):
         link = f"https://vietop.tech/api/get_data/{table}?column={date_column}&date_start={start_time}&date_end={end_time}"
         df = pd.DataFrame((requests.get(link).json()))
