@@ -72,11 +72,11 @@ if authentication_status:
     khoahoc = collect_data('https://vietop.tech/api/get_data/khoahoc')
     khoahoc_me = khoahoc.query("kh_parent_id == 0 and kh_active == 1")
     lophoc = collect_data('https://vietop.tech/api/get_data/lophoc')
-
     lop_danghoc = lophoc.query(
-        "(lop_status == 2 or lop_status == 4) and deleted_at.isnull()")
+        "(class_status == 'progress') and deleted_at.isnull()")
     df = lop_danghoc.merge(
         khoahoc_me[['kh_id', 'kh_ten']], left_on='kh_parent', right_on='kh_id')
+    lophoc_detals = df.copy()
     # The percentage of kh_ten
     df1 = df.kh_ten.value_counts(
         normalize=True)
@@ -104,7 +104,23 @@ if authentication_status:
     # df = df.set_precision(0)
     st.subheader("Lớp đang học")
     st.dataframe(df, height=250, width=1000)
-
+    st.markdown("---")
+    st.subheader("Chi tiết lớp đang học")
+    st.dataframe(lophoc_detals[['lop_id', 'lop_cn', 'class_type',
+                 'lop_cahoc', 'kh_ten', 'lop_ten', 'lop_buoihoc', 'lop_note']])
+    import io
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+        # Write each dataframe to a different worksheet.
+        lophoc_detals.to_excel(writer, sheet_name='Sheet1')
+        # Close the Pandas Excel writer and output the Excel file to the buffer
+        writer.save()
+        st.download_button(
+            label="Download chi tiết lớp đang học worksheets",
+            data=buffer,
+            file_name="lop_danghoc_details.xlsx",
+            mime="application/vnd.ms-excel"
+        )
 
 # ------------------------------------------ Học viên đang học
     hocvien = collect_data(
@@ -112,7 +128,7 @@ if authentication_status:
     orders = collect_data(
         'https://vietop.tech/api/get_data/orders').query("deleted_at.isnull()")
     molop = collect_data('https://vietop.tech/api/get_data/molop')
-
+    molop = molop.query("molop_active == 1")
     # hv đang họccd Au
     hocvien_danghoc = hocvien.merge(orders, on='hv_id')\
         .query("ketoan_active == 1")
@@ -122,7 +138,7 @@ if authentication_status:
         .drop_duplicates("hv_id")\
         .merge(lophoc[['lop_cn', 'lop_id', 'kh_parent']], on='lop_id', how='inner')\
         .merge(khoahoc_me, left_on='kh_parent', right_on='kh_id')
-
+    hv_danghoc_details = df.copy()
     df = df.groupby(["lop_cn", "kh_ten"], as_index=False).size().rename(
         columns={"size": "total_students"})
     df = rename_lop(df, 'lop_cn')
@@ -147,7 +163,11 @@ if authentication_status:
     # df = df.drop("index", axis=1)
     st.subheader("Học viên đang học")
     st.dataframe(df, height=250, width=1000)
+    st.subheader("Chi tiết học viên đang học")
+    st.dataframe(hv_danghoc_details[['hv_id', 'ketoan_id', 'lop_id', 'lop_cn',
+                 'kh_ten', 'created_at', ]], height=250, width=1000)
 
+# ------------------------------------------------------------------------------Danh sách học viên đang học, bảo lưu, chờ lớp
     df = hocvien[['hv_id', 'hv_fullname', 'hv_email', 'hv_camket', 'hv_coso', 'hv_status']]\
         .merge(orders[['hv_id', 'ketoan_active', 'ketoan_id', 'remaining_time', 'ketoan_price']], on='hv_id')\
         .query('ketoan_active == 0 or ketoan_active == 1 or ketoan_active == 4')\
@@ -161,10 +181,9 @@ if authentication_status:
 
     "---"
     st.subheader("Danh sách học viên đang học, bảo lưu, chờ lớp")
+    st.text(f"Tổng học viên đang học, bảo lưu, chờ lớp {df.shape[0]}")
     st.dataframe(df.set_index("hv_id"), use_container_width=True)
-    df.shape
-    import io
-    buffer = io.BytesIO()
+
     with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
         # Write each dataframe to a different worksheet.
         df.to_excel(writer, sheet_name='Sheet1')

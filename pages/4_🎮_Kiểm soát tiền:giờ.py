@@ -57,7 +57,7 @@ if authentication_status:
 
     @st.cache_data(ttl=timedelta(days=1))
     def collect_data(link):
-        return(pd.DataFrame((requests.get(link).json())))
+        return (pd.DataFrame((requests.get(link).json())))
 
     @st.cache_data()
     def rename_lop(dataframe, column_name):
@@ -67,7 +67,7 @@ if authentication_status:
 
     @st.cache_data()
     def exclude(dataframe, columns_name):
-        return(dataframe.loc[:, ~dataframe.columns.isin(columns_name)])
+        return (dataframe.loc[:, ~dataframe.columns.isin(columns_name)])
 
     # @st.cache_data()
     # def grand_total(dataframe, column):
@@ -264,6 +264,7 @@ if authentication_status:
     df = df.set_index("lop_id")
     ""
     st.dataframe(df, use_container_width=True)
+    st.subheader(f"Tổng lớp đang học {now_future.shape[0]} lớp")
     # -------------------------------------------------- merge hiện tại và tương lai và tiền giờ từng học viên
     # Create figures
     fig1 = create_chart(px.bar, now_future, 'lớp id',
