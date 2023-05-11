@@ -56,7 +56,7 @@ if authentication_status:
 
     @st.cache_data(ttl=timedelta(days=1))
     def collect_data(link):
-        return(pd.DataFrame((requests.get(link).json())))
+        return (pd.DataFrame((requests.get(link).json())))
 
     # @st.cache_data()
 
@@ -68,7 +68,7 @@ if authentication_status:
     # @st.cache_data()
 
     def exclude(dataframe, columns_name):
-        return(dataframe.loc[:, ~dataframe.columns.isin(columns_name)])
+        return (dataframe.loc[:, ~dataframe.columns.isin(columns_name)])
 
     # @st.cache_data()
 
@@ -234,6 +234,20 @@ if authentication_status:
         st.subheader(f"Chi tiết học viên {phanloai}")
         st.dataframe(df.loc[:, ['Ngày tạo', 'Chi nhánh', 'fullname', 'Đầu vào overall', 'Điểm tư vấn', 'cam kết', 'Học phí', 'Đã thu',
                                 'Thực giờ', 'Tổng giờ khoá học', 'Tiền/giờ', 'Chi tiết', 'Tư vấn viên', 'kh_ten', 'Phan_loai', 'PDK2', 'free', 'hv_link']], use_container_width=True)
+        import io
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            # Write each dataframe to a different worksheet.
+            df.loc[:, ['Ngày tạo', 'Chi nhánh', 'fullname', 'Đầu vào overall', 'Điểm tư vấn', 'cam kết', 'Học phí', 'Đã thu',
+                       'Thực giờ', 'Tổng giờ khoá học', 'Tiền/giờ', 'Chi tiết', 'Tư vấn viên', 'kh_ten', 'Phan_loai', 'PDK2', 'free', 'hv_link']].to_excel(writer, sheet_name='Sheet1')
+            # Close the Pandas Excel writer and output the Excel file to the buffer
+            writer.save()
+            st.download_button(
+                label=f"Chi tiết học viên {phanloai}",
+                data=buffer,
+                file_name="hocvien_cholop_details.xlsx",
+                mime="application/vnd.ms-excel"
+            )
     else:
         df = df.query("Phan_loai == @phanloai")
         tonghop = df.groupby(
@@ -276,3 +290,17 @@ if authentication_status:
         st.subheader(f"Chi tiết học viên {phanloai}")
         st.dataframe(df.loc[:, ['Ngày tạo', 'Chi nhánh', 'fullname', 'Đầu vào overall', 'Điểm tư vấn', 'cam kết', 'Học phí', 'Đã thu',
                                 'Thực giờ', 'Tổng giờ khoá học', 'Tiền/giờ', 'Chi tiết', 'Tư vấn viên', 'kh_ten', 'Phan_loai', 'PDK2', 'free', 'hv_link']], use_container_width=True)
+        import io
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            # Write each dataframe to a different worksheet.
+            df.loc[:, ['Ngày tạo', 'Chi nhánh', 'fullname', 'Đầu vào overall', 'Điểm tư vấn', 'cam kết', 'Học phí', 'Đã thu',
+                       'Thực giờ', 'Tổng giờ khoá học', 'Tiền/giờ', 'Chi tiết', 'Tư vấn viên', 'kh_ten', 'Phan_loai', 'PDK2', 'free', 'hv_link']].to_excel(writer, sheet_name='Sheet1')
+            # Close the Pandas Excel writer and output the Excel file to the buffer
+            writer.save()
+            st.download_button(
+                label=f"Chi tiết học viên {phanloai}",
+                data=buffer,
+                file_name="hocvien_cholop_details.xlsx",
+                mime="application/vnd.ms-excel"
+            )
