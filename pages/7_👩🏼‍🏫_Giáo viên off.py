@@ -71,7 +71,7 @@ if authentication_status:
 
     @st.cache_data(ttl=timedelta(days=1))
     def collect_data(link):
-        return(pd.DataFrame((requests.get(link).json())))
+        return (pd.DataFrame((requests.get(link).json())))
 
     @st.cache_data()
     def grand_total(dataframe, column):
@@ -117,9 +117,10 @@ if authentication_status:
     df = rename_lop(df, 'vietop_dept')
     df = df.reindex(columns=['lop_id', 'fullname', 'vietop_dept',
                     'cahoc', 'class_status', 'module', 'date_created'])
-    # Chi tiết gv_off and kh_ten
-    df_kh_ten = df.merge(kh_lop[['kh_ten', 'lop_id']], on='lop_id')
 
+    # Chi tiết gv_off and kh_ten
+    df_kh_ten = df.merge(kh_lop[['kh_ten', 'lop_id']], on='lop_id', how='left')
+    df_kh_ten['kh_ten'] = df_kh_ten['kh_ten'].fillna("Không có tên khoá học")
     # Group gv_off by vietop_dept
     df_group = df.groupby("vietop_dept", as_index=False).size()
     df_group = grand_total(df_group, 'vietop_dept')
@@ -157,3 +158,17 @@ if authentication_status:
 
     st.subheader("Chi tiết danh sách giáo viên off")
     st.dataframe(df_kh_ten.set_index('lop_id'), use_container_width=True)
+    import io
+    buffer = io.BytesIO()
+    # Create a Pandas Excel writer using XlsxWriter as the engine.
+    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+        # Write each dataframe to a different worksheet.
+        df_kh_ten.to_excel(writer, sheet_name='Sheet1')
+        # Close the Pandas Excel writer and output the Excel file to the buffer
+        writer.save()
+        st.download_button(
+            label="Download chi tiết giáo viên off worksheets",
+            data=buffer,
+            file_name="gv_off.xlsx",
+            mime="application/vnd.ms-excel"
+        )
