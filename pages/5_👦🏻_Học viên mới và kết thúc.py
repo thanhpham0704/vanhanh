@@ -89,6 +89,7 @@ if authentication_status:
 
     orders = collect_data(
         'https://vietop.tech/api/get_data/orders').query("deleted_at.isnull()")
+    hv_status = collect_data('https://vietop.tech/api/get_data/hv_status')
     leads = collect_data(
         'https://vietop.tech/api/get_data/leads')
     hocvien = collect_data(
@@ -141,6 +142,8 @@ if authentication_status:
     old_total = old_total.set_index("hv_coso")
 
     df = pd.concat([new_group, old_group])
+    df = df.groupby(['hv_coso', "status"], as_index=False)['num_student'].sum()
+    # df = df.drop(['hv_ngayhoc_month', 'date_end_month'], axis=1)
     # color_discrete_map={'Gò Dầu': '#07a203', 'Hoa Cúc': '#ffc107', 'Lê Hồng Phong': '#e700aa', 'Lê Quang Định': '#2196f3', 'Grand total': "White"}
     fig1 = px.bar(df, x='hv_coso',
                   y='num_student', text='num_student', color='status', barmode="group")
@@ -174,8 +177,10 @@ if authentication_status:
     ""
     col1, col2 = st.columns(2, gap='large')
     col1.subheader("Chi tiết học viên mới")
-    col1.dataframe(new.reindex(
-        columns=['hv_id', 'hv_fullname', 'hv_coso', 'hv_ngayhoc', 'status']), use_container_width=True)
+    new = new.merge(orders[['ketoan_id', 'hv_id']], on='hv_id').merge(
+        hv_status.query("status == 5")[['ketoan_id', 'note']], left_on='ketoan_id_y', right_on='ketoan_id').reindex(
+        columns=['hv_id', 'hv_fullname', 'hv_coso', 'hv_ngayhoc', 'status', 'note'])
+    col1.dataframe(new, use_container_width=True)
     import io
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
@@ -190,12 +195,15 @@ if authentication_status:
             mime="application/vnd.ms-excel"
         )
     col2.subheader("Chi tiết học viên kết thúc thật")
-
-    col2.dataframe(old.reindex(
-        columns=['hv_id', 'hv_fullname', 'hv_coso', 'date_end', 'status']), use_container_width=True)
+    old = old.merge(orders[['ketoan_id', 'hv_id']], on='hv_id').merge(
+        hv_status.query("status == 5")[['ketoan_id', 'note']], left_on='ketoan_id_y', right_on='ketoan_id').reindex(
+        columns=['hv_id', 'hv_fullname', 'hv_coso', 'date_end', 'status', 'note'])
+    old = old.drop_duplicates("hv_id")
+    col2.dataframe(old, use_container_width=True)
     with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
         # Write each dataframe to a different worksheet.
-        old.to_excel(writer, sheet_name='Sheet1')
+        old.merge(hocvien[['hv_id', 'hv_phone', 'hv_email']], on='hv_id').to_excel(
+            writer, sheet_name='Sheet1')
         # Close the Pandas Excel writer and output the Excel file to the buffer
         writer.save()
         col2.download_button(
@@ -204,3 +212,9 @@ if authentication_status:
             file_name="ketthuc_that.xlsx",
             mime="application/vnd.ms-excel"
         )
+
+    st.dataframe(old.merge(hocvien[['hv_id', 'hv_ngayhoc']], on='hv_id'))
+    df = old.merge(hocvien[['hv_id', 'hv_ngayhoc']], on='hv_id')
+    # df = df.astype({'hv_ngayhoc'})
+    df['date_diff'] = df['hv_ngayhoc'] - df['date_end']
+    df

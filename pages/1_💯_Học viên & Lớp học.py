@@ -72,6 +72,8 @@ if authentication_status:
     khoahoc = collect_data('https://vietop.tech/api/get_data/khoahoc')
     khoahoc_me = khoahoc.query("kh_parent_id == 0 and kh_active == 1")
     lophoc = collect_data('https://vietop.tech/api/get_data/lophoc')
+    diemdanh_details = collect_data(
+        'https://vietop.tech/api/get_data/diemdanh_details')
     lop_danghoc = lophoc.query(
         "(class_status == 'progress') and deleted_at.isnull()")
     df = lop_danghoc.merge(
@@ -182,11 +184,19 @@ if authentication_status:
     "---"
     st.subheader("Danh sách học viên đang học, bảo lưu, chờ lớp")
     st.text(f"Tổng học viên đang học, bảo lưu, chờ lớp {df.shape[0]}")
-    st.dataframe(df.set_index("hv_id"), use_container_width=True)
+
+    diemdanh_details = diemdanh_details.groupby(
+        'ketoan_id', as_index=False)['giohoc'].sum()
+    df1 = df.merge(diemdanh_details, on='ketoan_id')
+    df1['conlai'] = df1['remaining_time'] - df1['giohoc']
+    df1.columns = ['hv_id', 'hv_fullname', 'hv_email', 'chi nhánh', 'trạng thái',
+                   'PĐK', 'thực giờ đăng ký', 'tổng tiền khoá học', 'đã học', 'còn lại']
+    st.dataframe(df1.set_index("hv_id"), use_container_width=True)
 
     with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
         # Write each dataframe to a different worksheet.
-        df.to_excel(writer, sheet_name='Sheet1')
+        df1.merge(hocvien[['hv_id', 'hv_phone']], on='hv_id').to_excel(
+            writer, sheet_name='Sheet1')
         # Close the Pandas Excel writer and output the Excel file to the buffer
         writer.save()
         st.download_button(
