@@ -104,10 +104,11 @@ if authentication_status:
     khoahoc_me = khoahoc.query("kh_parent_id == 0 and kh_active == 1")
     # Get kh_ten
     lop_danghoc = lophoc.query(
-        "(lop_status == 2 or lop_status == 4) and deleted_at.isnull()")
+        "(class_status == 'progress' or class_status == 'suspended') and deleted_at.isnull()")
+    # lop_danghoc[['lop_id']]
     kh_lop = lop_danghoc.merge(
-        khoahoc_me[['kh_id', 'kh_ten']], left_on='kh_parent', right_on='kh_id')
-
+        khoahoc_me[['kh_id', 'kh_ten']], left_on='kh_parent', right_on='kh_id', how='left')
+    # kh_lop[['lop_id', 'kh_ten']]
     # Chi tiết gv_off
     df = gv_diemdanh[gv_diemdanh.class_status == 'gv_off']
     df = df[['lop_id', 'giaovien', 'cahoc',
