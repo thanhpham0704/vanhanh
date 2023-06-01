@@ -184,10 +184,11 @@ if authentication_status:
     "---"
     st.subheader("Danh sách học viên đang học, bảo lưu, chờ lớp")
     st.text(f"Tổng học viên đang học, bảo lưu, chờ lớp {df.shape[0]}")
-
+    diemdanh_details = diemdanh_details.query("phanloai == 1")
     diemdanh_details = diemdanh_details.groupby(
         'ketoan_id', as_index=False)['giohoc'].sum()
     df1 = df.merge(diemdanh_details, on='ketoan_id')
+
     df1['conlai'] = df1['remaining_time'] - df1['giohoc']
     df1.columns = ['hv_id', 'hv_fullname', 'hv_email', 'chi nhánh', 'trạng thái',
                    'PĐK', 'thực giờ đăng ký', 'tổng tiền khoá học', 'đã học', 'còn lại']
