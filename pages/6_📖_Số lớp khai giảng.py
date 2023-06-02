@@ -72,7 +72,7 @@ if authentication_status:
 
     @st.cache_data(ttl=timedelta(days=1))
     def collect_data(link):
-        return(pd.DataFrame((requests.get(link).json())))
+        return (pd.DataFrame((requests.get(link).json())))
 
     @st.cache_data(ttl=timedelta(days=1))
     def collect_filtered_data(table, date_column='', start_time='', end_time=''):
@@ -106,12 +106,6 @@ if authentication_status:
     df = df.query("lop_type == 1 and deleted_at.isnull()")
     df['created_at'] = df['created_at'].astype("datetime64[ns]")
 
-    df['loai_lop'] = [
-        "LỚP NHÓM" if 'NHÓM' in i else "LỚP KÈM" if "KÈM" in i else "KHÔNG XÁC ĐỊNH" for i in df['kh_ten']]
-
-    df['lop_status'] = df['lop_status'].replace(
-        {2: "OFFLINE", 3: "KẾT THÚC", 4: "ONLINE"})
-
     # Create Month
     # df['created_at'] = df['created_at'].astype("datetime64[ns]")
     # df['created_at_month'] = df['created_at'].dt.strftime('%-m')
@@ -121,11 +115,9 @@ if authentication_status:
     # df['lop_end_year'] = df['created_at'].dt.strftime('%-Y')
     # display(lophoc_2023.head())
     # total class open
-    lophoc_count = df
-    df['created_at'] = df['created_at'].apply(
-        lambda x: date(x.year, x.month, 1))
+    df['created_at'] = df['created_at'].dt.date
     df = rename_lop(df, 'lop_cn')
-    df = df.groupby(['lop_id', 'lop_cn', 'lop_status', 'loai_lop',
+    df = df.groupby(['lop_id', 'lop_cn', 'class_type', 'kh_ten',
                     'created_at'], as_index=False).size()
     df = grand_total(df, 'lop_cn')
     df_group = df.groupby("lop_cn", as_index=False)['size'].sum()
@@ -146,4 +138,4 @@ if authentication_status:
     "---"
     st.subheader(
         f"Chi tiết lớp khai giảng")
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(df.drop('size', axis=1), use_container_width=True)
