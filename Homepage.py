@@ -9,8 +9,10 @@ import streamlit_authenticator as stauth
 import numpy as np
 import calendar
 
-# names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành"]
-# usernames = ["thanhpham", "tampham", "vietopvanhanh"]
+# names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành", "Kinh doanh", "SOL"]
+# usernames = ["thanhpham", "tampham",
+#  "vietopvanhanh", 'vietopkinhdoanh', 'vietop_sol']
+
 
 # hashed_passwords = stauth.Hasher(passwords).generate()
 
@@ -26,6 +28,7 @@ st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
 # ----------------------------------------
 names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành", "Kinh doanh"]
 usernames = ["thanhpham", "tampham", "vietopvanhanh", 'vietopkinhdoanh']
+
 
 # Load hashed password
 file_path = Path(__file__).parent / 'hashed_pw.pkl'
@@ -60,6 +63,7 @@ if authentication_status:
         unsafe_allow_html=True
     )
     st.title(page_title + " " + page_icon)
+
     # if 'authentication_status' not in st.session_state:
     st.session_state['authentication_status'] = authentication_status
     # if 'authenticator' not in st.session_state:
@@ -73,6 +77,7 @@ if authentication_status:
 
     # Create a form to get the date range filters
     with st.sidebar.form(key='date_filter_form'):
+        # col1, col2 = st.columns(2)
         ketoan_start_time = st.date_input(
             "Select start date", value=DEFAULT_START_DATE)
         ketoan_end_time = st.date_input(
@@ -118,7 +123,7 @@ if authentication_status:
     #     df['date_created'] = pd.to_datetime(df['date_created'])
     #     return df
 
-    @st.cache_data(ttl=timedelta(days=0.1))
+    @st.cache_data(ttl=timedelta(days=1))
     def collect_filtered_data(table, date_column='', start_time='', end_time=''):
         link = f"https://vietop.tech/api/get_data/{table}?column={date_column}&date_start={start_time}&date_end={end_time}"
         df = pd.DataFrame((requests.get(link).json()))
@@ -402,11 +407,11 @@ if authentication_status:
 
     thucthu = diemdanh_details.query(
         'date_created >= @ketoan_start_time and date_created <= @ketoan_end_time')\
-        .groupby(['ketoan_id', 'lop_id', 'gv_id', 'date_created', 'price'], as_index=False)['giohoc'].sum()\
-        .merge(lophoc, on='lop_id')\
-        .merge(users[['fullname', 'id']], left_on='gv_id', right_on='id')
+        .groupby(['ketoan_id', 'lop_id', 'gv_id', 'date_created'], as_index=False)['price', 'giohoc'].sum()\
+        .merge(lophoc, on='lop_id', how='left')\
+        .merge(users[['fullname', 'id']], left_on='gv_id', right_on='id', how='left')
 
-    thucthu_all = diemdanh_details.query("date_created > '2023-01-01'")\
+    thucthu_all = diemdanh_details.query("date_created >= '2023-01-01'")\
         .groupby(['ketoan_id', 'lop_id', 'gv_id', 'date_created', 'price'], as_index=False)['giohoc'].sum()\
         .merge(lophoc, on='lop_id')\
         .merge(users[['fullname', 'id']], left_on='gv_id', right_on='id')
