@@ -100,25 +100,25 @@ if authentication_status:
     khoahoc = collect_data('https://vietop.tech/api/get_data/khoahoc')
     # Get a response
     lophoc = collect_filtered_data(
-        table='lophoc', date_column='created_at', start_time=ketoan_start_time, end_time=ketoan_end_time)
+        table='lophoc', date_column='lop_start', start_time=ketoan_start_time, end_time=ketoan_end_time)
 
     df = lophoc.merge(khoahoc[['kh_id', 'kh_ten']], on='kh_id', how='inner')
     df = df.query("lop_type == 1 and deleted_at.isnull()")
-    df['created_at'] = df['created_at'].astype("datetime64[ns]")
+    df['lop_start'] = df['lop_start'].astype("datetime64[ns]")
 
     # Create Month
-    # df['created_at'] = df['created_at'].astype("datetime64[ns]")
-    # df['created_at_month'] = df['created_at'].dt.strftime('%-m')
-    # df['created_at_year'] = df['created_at'].dt.strftime('%-Y')
+    # df['lop_start'] = df['lop_start'].astype("datetime64[ns]")
+    # df['lop_start_month'] = df['lop_start'].dt.strftime('%-m')
+    # df['lop_start_year'] = df['lop_start'].dt.strftime('%-Y')
     # df['lop_end'] = df['lop_end'].astype("datetime64[ns]")
     # df['lop_end_month'] = df['lop_end'].dt.strftime('%-m')
-    # df['lop_end_year'] = df['created_at'].dt.strftime('%-Y')
+    # df['lop_end_year'] = df['lop_start'].dt.strftime('%-Y')
     # display(lophoc_2023.head())
     # total class open
-    df['created_at'] = df['created_at'].dt.date
+    df['lop_start'] = df['lop_start'].dt.date
     df = rename_lop(df, 'lop_cn')
     df = df.groupby(['lop_id', 'lop_cn', 'class_type', 'kh_ten',
-                    'created_at'], as_index=False).size()
+                    'lop_start'], as_index=False).size()
     df = grand_total(df, 'lop_cn')
     df_group = df.groupby("lop_cn", as_index=False)['size'].sum()
     # Create bar_chart
