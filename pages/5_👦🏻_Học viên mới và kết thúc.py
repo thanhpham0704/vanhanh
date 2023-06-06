@@ -212,9 +212,7 @@ if authentication_status:
             file_name="ketthuc_that.xlsx",
             mime="application/vnd.ms-excel"
         )
-
-    st.dataframe(old.merge(hocvien[['hv_id', 'hv_ngayhoc']], on='hv_id'))
-    df = old.merge(hocvien[['hv_id', 'hv_ngayhoc']], on='hv_id')
+    old.merge(hocvien[['hv_id', 'hv_email']], on='hv_id')\
+        .to_excel('/Users/phamtanthanh/Desktop/old_email.xlsx', sheet_name='old_email', engine="xlsxwriter", index=False)
+    # df = old.merge(hocvien[['hv_id', 'hv_ngayhoc']], on='hv_id')
     # df = df.astype({'hv_ngayhoc'})
-    df['date_diff'] = df['hv_ngayhoc'] - df['date_end']
-    df
