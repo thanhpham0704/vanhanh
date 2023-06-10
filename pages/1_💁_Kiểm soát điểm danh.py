@@ -1,17 +1,13 @@
 import streamlit as st
 import requests
-import plotly.express as px
 import pandas as pd
-from datetime import datetime, timedelta, date
-from pathlib import Path
-import pickle
-import streamlit_authenticator as stauth
-import numpy as np
-import calendar
+from datetime import datetime, timedelta
+import io
+buffer = io.BytesIO()
 
 
-page_title = "Chi tiết thiếu điểm danh"
-page_icon = "🎬"
+page_title = "Đối chiếu điểm danh"
+page_icon = "💁"
 layout = "wide"
 st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
 # ----------------------------------------
@@ -43,13 +39,13 @@ if authentication_status:
         unsafe_allow_html=True
     )
     st.title(page_title + " " + page_icon)
+    st.markdown("---")
     # Define a function
 
-    @st.cache_data(ttl=timedelta(days=1))
+    @st.cache_data(ttl=timedelta(seconds=60))
     def collect_data(link):
         return (pd.DataFrame((requests.get(link).json())))
 
-    @st.cache_data(ttl=timedelta(days=1))
     def collect_filtered_data(table, date_column='', start_time='', end_time=''):
         link = f"https://vietop.tech/api/get_data/{table}?column={date_column}&date_start={start_time}&date_end={end_time}"
         df = pd.DataFrame((requests.get(link).json()))
@@ -61,15 +57,6 @@ if authentication_status:
     def rename_lop(dataframe, column_name):
         dataframe[column_name] = dataframe[column_name].replace(
             {1: "Hoa Cúc", 2: "Gò Dầu", 3: "Lê Quang Định", 5: "Lê Hồng Phong"})
-        return dataframe
-
-    @st.cache_data()
-    def grand_total(dataframe, column):
-        # create a new row with the sum of each numerical column
-        totals = dataframe.select_dtypes(include=[float, int]).sum()
-        totals[column] = "Grand total"
-        # append the new row to the dataframe
-        dataframe = dataframe.append(totals, ignore_index=True)
         return dataframe
 
     lophoc = collect_data('https://vietop.tech/api/get_data/lophoc')
@@ -105,7 +92,7 @@ if authentication_status:
     df1 = df.merge(lophoc_schedules_subset, on='lop_id', how='inner')
     # display(df1.columns)
     df2 = diemdanh[['lop_id', 'date_created',
-                    'cahoc', 'sogio', 'giaovien', 'auto_status']]
+                    'cahoc', 'sogio', 'giaovien', 'class_status', 'auto_status']]
     # display(df2.columns)
     df3 = df1.merge(df2, left_on=['lop_id', 'class_period'], right_on=[
                     'lop_id', 'cahoc'], how='outer')
@@ -116,29 +103,81 @@ if authentication_status:
     df5 = df4.merge(lophoc[['lop_id', 'kh_id', 'lop_cn']], on='lop_id', how='left')\
         .merge(khoahoc[['kh_id', 'kh_ten']], on='kh_id', how='left')
     df5 = df5.rename(columns={'fullname_x': 'gv_fullname_xepphong',
-                     'fullname_y': 'gv_fullname_diemdanh', 'duration': 'sogio_xepphong', 'sogio': 'sogio_diemdanh'})
+                     'fullname_y': 'gv_fullname_diemdanh', 'duration': 'sogio_xepphong', 'sogio': 'sogio_diemdanh', 'class_period': 'cahoc_xepphong', 'cahoc': 'cahoc_diemdanh'})
     df5.drop(['teacher_id', 'id_x', 'id_y', 'kh_id',
              'giaovien'], axis=1, inplace=True)
     # print(df5.columns)
-    df6 = df5.reindex(columns=['room_id', 'lop_cn', 'lop_id', 'kh_ten', 'gv_fullname_xepphong', 'weekday', 'start_time',
-                      'class_period', 'sogio_xepphong', 'auto_status', 'date_created', 'gv_fullname_diemdanh', 'cahoc', 'sogio_diemdanh',])
-    df7 = rename_lop(df6, 'lop_cn')
-    # df7.to_excel('/Users/phamtanthanh/Desktop/sosanh_diemdanh.xlsx', sheet_name='sosanh_diemdanh', engine="xlsxwriter", index=False)
-    df8 = df7.query("date_created.isna()")
-    st.subheader(
-        f"Tổng lớp thiếu điểm danh trong ngày :blue[{ketoan_start_time}] là :blue[{df8.shape[0]} lớp]")
-    st.dataframe(df8)
+    df6 = df5.reindex(columns=['room_id', 'lop_id',  'lop_cn', 'kh_ten', 'gv_fullname_xepphong', 'weekday', 'start_time',
+                      'cahoc_xepphong', 'sogio_xepphong', 'date_created', 'class_status', 'gv_fullname_diemdanh', 'cahoc_diemdanh', 'sogio_diemdanh',])
 
-    import io
-    buffer = io.BytesIO()
+    df7 = rename_lop(df6, 'lop_cn')
+
+    # Tổng lơp thiếu điểm danh
+    st.markdown(
+        f"Tổng lớp có :blue[xếp phòng] nhưng không có :blue[điểm danh] là :blue[{df7.query('date_created.isna()').shape[0]} lớp]")
+    st.dataframe(df7.query("date_created.isnull()").reset_index(drop=True))
     with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
         # Write each dataframe to a different worksheet.
-        df8.to_excel(writer, sheet_name='Sheet1')
+        df7.query("date_created.isnull()").reset_index(
+            drop=True).to_excel(writer, sheet_name='Sheet1')
         # Close the Pandas Excel writer and output the Excel file to the buffer
         writer.save()
         st.download_button(
             label="Download danh sách thiếu điểm danh",
             data=buffer,
             file_name="diemdanh_missing.xlsx",
+            mime="application/vnd.ms-excel"
+        )
+    st.markdown("")
+    # Tổng lớp thiếu xếp phòng
+    st.markdown(
+        f"Tổng lớp có :blue[điểm danh] nhưng không có :blue[xếp phòng] là là :blue[{df7.query('room_id.isna()').shape[0]} lớp]")
+    st.dataframe(df7.query("room_id.isnull()").reset_index(drop=True))
+    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+        # Write each dataframe to a different worksheet.
+        df7.query("room_id.isnull()").reset_index(drop=True).query("date_created.isnull()").reset_index(
+            drop=True).to_excel(writer, sheet_name='Sheet1')
+        # Close the Pandas Excel writer and output the Excel file to the buffer
+        writer.save()
+        st.download_button(
+            label="Download danh sách thiếu xếp phòng",
+            data=buffer,
+            file_name="xepphong_missing.xlsx",
+            mime="application/vnd.ms-excel"
+        )
+    st.markdown("")
+    # Filter room_id and date_created not null
+    df8 = df7.query('room_id.notnull() and date_created.notnull()')
+    # Tổng lớp đầy đủ điểm danh và xếp phòng
+    st.markdown(
+        f"Tổng lớp lớp có đầy đủ :blue[xếp phòng] và :blue[điểm danh] là :blue[{df8.query('room_id.notnull() and date_created.notnull()').shape[0]} lớp]")
+    df8['check_status'] = ['wrong teacher' if i['gv_fullname_xepphong'] != i['gv_fullname_diemdanh']
+                           else 'wrong time' if i['sogio_xepphong'] != i['sogio_diemdanh']
+                           else 'normal' for j, i in df8.iterrows()]
+    # Filter for wrong_teacher
+    wrong_teacher = df8.query('check_status == "wrong teacher"').shape[0]
+    normal = df8.query('check_status == "normal"').shape[0]
+    wrong_time = df8.query('check_status == "wrong time"').shape[0]
+    col2, col3, col4 = st.columns(3)
+    with col2:
+        st.markdown("Số lớp sai giáo viên")
+        st.markdown(f":blue[{wrong_teacher}] lớp")
+    with col3:
+        st.markdown("Số lớp sai giờ")
+        st.markdown(f":blue[{wrong_time}] lớp")
+    with col4:
+        st.markdown("Số lớp bình thường")
+        st.markdown(f":blue[{normal}] lớp")
+
+    st.dataframe(df8.reset_index(drop=True))
+    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+        # Write each dataframe to a different worksheet.
+        df8.to_excel(writer, sheet_name='Sheet1')
+        # Close the Pandas Excel writer and output the Excel file to the buffer
+        writer.save()
+        st.download_button(
+            label="Download danh sách đầy đủ xếp phòng và điểm danh",
+            data=buffer,
+            file_name="xepphong_diemdanh_full.xlsx",
             mime="application/vnd.ms-excel"
         )
