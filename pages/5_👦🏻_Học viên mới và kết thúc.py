@@ -178,7 +178,7 @@ if authentication_status:
     col1, col2 = st.columns(2, gap='large')
     col1.subheader("Chi tiết học viên mới")
     new = new.merge(orders[['ketoan_id', 'hv_id']], on='hv_id').merge(
-        hv_status.query("status == 5")[['ketoan_id', 'note']], left_on='ketoan_id_y', right_on='ketoan_id').reindex(
+        hv_status[['ketoan_id', 'note']], left_on='ketoan_id_y', right_on='ketoan_id', how='left').reindex(
         columns=['hv_id', 'hv_fullname', 'hv_coso', 'hv_ngayhoc', 'status', 'note'])
     col1.dataframe(new, use_container_width=True)
     import io
@@ -196,9 +196,10 @@ if authentication_status:
         )
     col2.subheader("Chi tiết học viên kết thúc thật")
     old = old.merge(orders[['ketoan_id', 'hv_id']], on='hv_id').merge(
-        hv_status.query("status == 5")[['ketoan_id', 'note']], left_on='ketoan_id_y', right_on='ketoan_id').reindex(
+        hv_status[['ketoan_id', 'note']], left_on='ketoan_id_y', right_on='ketoan_id', how='left').reindex(
         columns=['hv_id', 'hv_fullname', 'hv_coso', 'date_end', 'status', 'note'])
     old = old.drop_duplicates("hv_id")
+    old = old.reset_index(drop=True)
     col2.dataframe(old, use_container_width=True)
     with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
         # Write each dataframe to a different worksheet.

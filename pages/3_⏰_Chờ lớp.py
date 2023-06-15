@@ -189,7 +189,7 @@ if authentication_status:
     #                 'PDK2', 'Phan_loai', 'free'], as_index=False).size()
     # --------------------------------------------------------------Select box
     # Create a select box for phan loai
-    phanloai = st.selectbox(
+    phanloai = st.sidebar.selectbox(
         label="Select phân loại:",
         options=["All"] + list(df["Phan_loai"].unique()),
         index=0)
