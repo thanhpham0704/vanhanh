@@ -2,13 +2,14 @@ import streamlit as st
 import requests
 import pandas as pd
 from pathlib import Path
-import pickle
 import streamlit_authenticator as stauth
 from datetime import timedelta
 import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
 
-page_title = "Học viên và lớp đang học "
-page_icon = "💯"
+page_title = "Quản Lý Học Viên Đang Học"
+page_icon = "🎓"
 
 layout = "wide"
 st.set_page_config(page_title=page_title,
@@ -74,63 +75,19 @@ if authentication_status:
     lophoc = collect_data('https://vietop.tech/api/get_data/lophoc')
     diemdanh_details = collect_data(
         'https://vietop.tech/api/get_data/diemdanh_details')
-    lop_danghoc = lophoc.query(
-        "(class_status == 'progress') and deleted_at.isnull()")
-    df = lop_danghoc.merge(
-        khoahoc_me[['kh_id', 'kh_ten']], left_on='kh_parent', right_on='kh_id')
-    lophoc_detals = df.copy()
-    # The percentage of kh_ten
-    df1 = df.kh_ten.value_counts(
-        normalize=True)
-    df1 = df1.reset_index()
-    df1['kh_ten'] = round(df1['kh_ten'], 2) * 100
-    # Group by
-    df = df.groupby(["lop_cn", "kh_ten"], as_index=False).size()
-    df = df.rename(columns={"size": "total_classes"})
-    df = rename_lop(df, 'lop_cn')
-
-    df = df.pivot_table(index='kh_ten', values='total_classes',
-                        columns='lop_cn', aggfunc='sum', margins=True, fill_value=0, margins_name="All Vietop")
-    df = df.reset_index()
-    # Merge df and df1
-    df = df.merge(df1, left_on='kh_ten', right_on='index', how='left')
-    df = df.drop("index", axis=1)
-    df = df.fillna(100)
-    df = df.rename(
-        columns={"kh_ten_y": "Percentage %", "kh_ten_x": "Khoá học"})
-    df = df.set_index("Khoá học")
-    df["Percentage %"] = df["Percentage %"]/100
-    df = df.style.background_gradient()
-    df = df.format({'Percentage %': '{:.2%}'})
-
-    # df = df.set_precision(0)
-    st.subheader("Lớp đang học")
-    st.dataframe(df, height=250, width=1000)
-    st.markdown("---")
-    st.subheader("Chi tiết lớp đang học")
-    st.dataframe(lophoc_detals[['lop_id', 'lop_cn', 'class_type',
-                 'lop_cahoc', 'kh_ten', 'lop_ten', 'lop_buoihoc', 'lop_note']])
-    import io
-    buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-        # Write each dataframe to a different worksheet.
-        lophoc_detals.to_excel(writer, sheet_name='Sheet1')
-        # Close the Pandas Excel writer and output the Excel file to the buffer
-        writer.save()
-        st.download_button(
-            label="Download chi tiết lớp đang học worksheets",
-            data=buffer,
-            file_name="lop_danghoc_details.xlsx",
-            mime="application/vnd.ms-excel"
-        )
+    # lop_danghoc = lophoc.query(
+    #     "(class_status == 'progress') and deleted_at.isnull()")
+    molop = collect_data(
+        'https://vietop.tech/api/get_data/molop').query('molop_active ==1')
 
 # ------------------------------------------ Học viên đang học
+    import io
+    buffer = io.BytesIO()
+
     hocvien = collect_data(
         'https://vietop.tech/api/get_data/hocvien').query("hv_id != 737 and deleted_at.isnull()")
     orders = collect_data(
         'https://vietop.tech/api/get_data/orders').query("deleted_at.isnull()")
-    molop = collect_data('https://vietop.tech/api/get_data/molop')
-    molop = molop.query("molop_active == 1")
     # hv đang họccd Au
     hocvien_danghoc = hocvien.merge(orders, on='hv_id')\
         .query("ketoan_active == 1")
@@ -161,11 +118,13 @@ if authentication_status:
     df["Percentage %"] = df["Percentage %"]/100
     df = df.style.background_gradient()
     df = df.format({'Percentage %': '{:.2%}'})
-    "---"
+
     # df = df.drop("index", axis=1)
     st.subheader("Học viên đang học")
     st.dataframe(df, height=250, width=1000)
-    st.subheader("Chi tiết học viên đang học")
+    st.markdown("---")
+    st.subheader(
+        f"Chi tiết học viên đang học :blue[{hv_danghoc_details.shape[0]}] học viên  ")
     st.dataframe(hv_danghoc_details[['hv_id', 'ketoan_id', 'lop_id', 'lop_cn',
                  'kh_ten', 'created_at', ]], height=250, width=1000)
 
@@ -182,8 +141,8 @@ if authentication_status:
     df = df.drop(['hv_status', 'hv_camket'], axis=1)
 
     "---"
-    st.subheader("Danh sách học viên đang học, bảo lưu, chờ lớp")
-    st.text(f"Tổng học viên đang học, bảo lưu, chờ lớp {df.shape[0]}")
+    st.subheader(
+        f"Danh sách học viên đang học, bảo lưu, chờ lớp :blue[{df.shape[0]}] học viên")
     diemdanh_details = diemdanh_details.query("phanloai == 1")
     diemdanh_details = diemdanh_details.groupby(
         'ketoan_id', as_index=False)['giohoc'].sum()
@@ -192,7 +151,7 @@ if authentication_status:
     df1['conlai'] = df1['remaining_time'] - df1['giohoc']
     df1.columns = ['hv_id', 'hv_fullname', 'hv_email', 'chi nhánh', 'trạng thái',
                    'PĐK', 'thực giờ đăng ký', 'tổng tiền khoá học', 'đã học', 'còn lại']
-    st.dataframe(df1.set_index("hv_id"), use_container_width=True)
+    st.dataframe(df1.reset_index(drop=True), use_container_width=True)
 
     with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
         # Write each dataframe to a different worksheet.
