@@ -88,19 +88,19 @@ if authentication_status:
     # Average num of students in each kind of class
     df_avg_hv = hv_lop.groupby(["lop_id", "kh_ten"],
                                as_index=False)['lop_ten'].count()
-    df_avg_hv = df_avg_hv.rename(columns={'lop_ten': 'sỉ số'})
+    df_avg_hv = df_avg_hv.rename(columns={'lop_ten': 'sĩ số'})
     # Get the distribution of average number of students
     df_dis = df_avg_hv.copy()
     # Filter for lop nhom
     df_dis_nhom = df_avg_hv[df_avg_hv['kh_ten'].isin(
         ['Nhóm Premium', 'Nhóm Online'])]
 
-    fig2 = px.histogram(df_dis_nhom, x="sỉ số",)
+    fig2 = px.histogram(df_dis_nhom, x="sĩ số",)
     fig2.update_traces(go.Histogram(
-        x=df_dis_nhom['sỉ số'],
+        x=df_dis_nhom['sĩ số'],
         # hovertemplate="Count học viên: %{y}<extra></extra>",
         text=[
-            f"{count}" for count in df_dis_nhom['sỉ số'].value_counts().sort_index()],
+            f"{count}" for count in df_dis_nhom['sĩ số'].value_counts().sort_index()],
         textposition='inside'
     ))
 
@@ -113,12 +113,12 @@ if authentication_status:
         bargap=0.2
     )
 
-    df_avg_hv = df_avg_hv.groupby("kh_ten", as_index=False)['sỉ số'].mean()
+    df_avg_hv = df_avg_hv.groupby("kh_ten", as_index=False)['sĩ số'].mean()
     # Round the avg num of students to 2 decimal points
-    df_avg_hv['sỉ số'] = round(df_avg_hv['sỉ số'], 1)
+    df_avg_hv['sĩ số'] = round(df_avg_hv['sĩ số'], 1)
     # Rename the column
     df_avg_hv.rename(
-        columns={'sỉ số': 'Số học viên trung bình'}, inplace=True)
+        columns={'sĩ số': 'Số học viên trung bình'}, inplace=True)
 
     # Create bar_chart
     fig1 = px.bar(df_avg_hv, x='kh_ten',
@@ -127,9 +127,9 @@ if authentication_status:
         # Increase font size for all text in the plot)
         xaxis_title='', yaxis_title='Trung bình học viên', showlegend=True, font=dict(size=20), xaxis={'categoryorder': 'total descending'})
     fig1.update_traces(
-        hovertemplate="Trung bình học viên: %{y:,.0f}<extra></extra>",
+        hovertemplate="Trung bình học viên: %{y:,.1f}<extra></extra>",
         # Add thousand separators to the text label
-        texttemplate='%{text:,.0f}',
+        texttemplate='%{text:,.1f}',
         textposition='inside')  # Show the text label inside the bars
 
     # Get the detail spreadsheet
@@ -168,10 +168,10 @@ if authentication_status:
     st.markdown("---")
     st.subheader("Chi tiết lớp đang học")
     lophoc_details = lophoc_details[['lop_id', 'lop_cn', 'class_type',
-                                     'lop_cahoc', 'kh_ten', 'lop_buoihoc', 'lop_note']].merge(df_dis[['lop_id', 'sỉ số']], on='lop_id', how='left')
+                                     'lop_cahoc', 'kh_ten', 'lop_buoihoc', 'lop_note']].merge(df_dis[['lop_id', 'sĩ số']], on='lop_id', how='left')
     lophoc_details = rename_lop(lophoc_details, 'lop_cn')
     lophoc_details = lophoc_details.reindex(
-        columns=['lop_id', 'lop_cn', 'kh_ten', 'sỉ số', 'lop_cahoc', 'lop_buoihoc', 'class_type',
+        columns=['lop_id', 'lop_cn', 'kh_ten', 'sĩ số', 'lop_cahoc', 'lop_buoihoc', 'class_type',
                  'lop_note'])
     st.dataframe(lophoc_details)
 
