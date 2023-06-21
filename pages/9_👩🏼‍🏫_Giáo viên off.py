@@ -66,6 +66,8 @@ if authentication_status:
             "Select start date", value=DEFAULT_START_DATE)
         ketoan_end_time = st.date_input(
             "Select end date", value=DEFAULT_END_DATE)
+        gv_hv_off = st.selectbox(
+            label="Select class status:", options=['gv_off', 'hv_off'])
         submit_button = st.form_submit_button(
             label='Filter',  use_container_width=True)
 
@@ -110,7 +112,7 @@ if authentication_status:
         khoahoc_me[['kh_id', 'kh_ten']], left_on='kh_parent', right_on='kh_id', how='left')
     # kh_lop[['lop_id', 'kh_ten']]
     # Chi tiết gv_off
-    df = gv_diemdanh[gv_diemdanh.class_status == 'gv_off']
+    df = gv_diemdanh[gv_diemdanh.class_status.isin(['gv_off', 'hv_off'])]
     df = df[['lop_id', 'giaovien', 'cahoc',
              'class_status', 'date_created', 'module']]
     df = df.merge(users[['id', 'fullname', 'vietop_dept']],
@@ -118,10 +120,12 @@ if authentication_status:
     df = rename_lop(df, 'vietop_dept')
     df = df.reindex(columns=['lop_id', 'fullname', 'vietop_dept',
                     'cahoc', 'class_status', 'module', 'date_created'])
-
+    # Filter class_status
+    df = df.query("class_status == @gv_hv_off")
     # Chi tiết gv_off and kh_ten
     df_kh_ten = df.merge(kh_lop[['kh_ten', 'lop_id']], on='lop_id', how='left')
     df_kh_ten['kh_ten'] = df_kh_ten['kh_ten'].fillna("Không có tên khoá học")
+
     # Group gv_off by vietop_dept
     df_group = df.groupby("vietop_dept", as_index=False).size()
     df_group = grand_total(df_group, 'vietop_dept')
@@ -133,9 +137,9 @@ if authentication_status:
                   y='size', text='size', color='vietop_dept', color_discrete_map={'Gò Dầu': '#07a203', 'Hoa Cúc': '#ffc107', 'Lê Hồng Phong': '#e700aa', 'Lê Quang Định': '#2196f3', 'Grand total': "White"})
     fig1.update_layout(
         # Increase font size for all text in the plot)
-        xaxis_title='Chi nhánh', yaxis_title='Giáo viên off', showlegend=True, font=dict(size=17), xaxis={'categoryorder': 'total descending'})
+        xaxis_title='Chi nhánh', yaxis_title='lớp off', showlegend=True, font=dict(size=17), xaxis={'categoryorder': 'total descending'})
     fig1.update_traces(
-        hovertemplate="Số giáo viên off: %{y:,.0f}<extra></extra>",
+        hovertemplate="Số lớp off: %{y:,.0f}<extra></extra>",
         # Add thousand separators to the text label
         texttemplate='%{text:,.0f}',
         textposition='inside')  # Show the text label inside the bars
@@ -145,7 +149,7 @@ if authentication_status:
                   y='size', text='size')
     fig2.update_layout(
         # Increase font size for all text in the plot)
-        xaxis_title='Tên khoá học', yaxis_title='Lớp off', showlegend=True, font=dict(size=17), xaxis={'categoryorder': 'total descending'})
+        xaxis_title='Tên khoá học', yaxis_title='Lớp off', showlegend=True, font=dict(size=17), xaxis={'categoryorder': 'total descending'},)
     fig2.update_traces(
         hovertemplate="Số lớp off: %{y:,.0f}<extra></extra>",
         # Add thousand separators to the text label
@@ -154,10 +158,10 @@ if authentication_status:
     col1, col2 = st.columns(2)
     col1.subheader("Số lớp off theo tên khoá học")
     col1.plotly_chart(fig2, use_container_width=True)
-    col2.subheader("Số giáo viên off theo chi nhánh")
+    col2.subheader("Số lớp off theo chi nhánh")
     col2.plotly_chart(fig1, use_container_width=True)
 
-    st.subheader("Chi tiết danh sách giáo viên off")
+    st.subheader("Chi tiết danh sách lớp off")
     st.dataframe(df_kh_ten.set_index('lop_id'), use_container_width=True)
     import io
     buffer = io.BytesIO()
@@ -168,7 +172,7 @@ if authentication_status:
         # Close the Pandas Excel writer and output the Excel file to the buffer
         writer.save()
         st.download_button(
-            label="Download chi tiết giáo viên off worksheets",
+            label="Download chi tiết lớp off worksheets",
             data=buffer,
             file_name="gv_off.xlsx",
             mime="application/vnd.ms-excel"
