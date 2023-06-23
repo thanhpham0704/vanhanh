@@ -139,7 +139,7 @@ if authentication_status:
     sh = sa.open("Nhân sự")
     worksheet = sh.worksheet("Giáo viên")
     salary = pd.DataFrame(worksheet.get_all_records())
-    salary = salary.replace("", np.nan).dropna(subset='Mã giáo viên')
+    salary = salary.replace("", np.nan).dropna(subset='id_gg')
     salary = salary.replace('\.', '', regex=True)
     salary = salary.astype({'Lương theo hợp đông': 'float', 'Thâm niên': 'float',
                            'Chức danh': "float", 'Tổng lương': 'float', 'date_affected': 'datetime64[ns]'})
