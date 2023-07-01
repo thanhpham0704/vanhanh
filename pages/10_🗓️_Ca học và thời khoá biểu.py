@@ -113,7 +113,10 @@ if authentication_status:
     tiengiolop.drop(['active', 'ketoan_id_x'], axis=1, inplace=True)
     tiengiolop = tiengiolop[['lop_id', 'lop_cn', 'fullname',
                              'kh_ten', 'lop_ten', 'ketoan_tientrengio_x', 'created_at_x']]
-    lop_danghoc = lophoc[lophoc['lop_status'].isin([2, 4])]
+    # lop_danghoc = lophoc[lophoc['lop_status'].isin([2, 4])]
+    lop_danghoc = lophoc.query(
+        "(class_status == 'progress') and deleted_at.isnull()")
+
     # Create lophoc_khoahoc
     lophoc_khoahoc = lop_danghoc.merge(
         khoahoc_me[['kh_id', 'kh_ten']], left_on='kh_parent', right_on='kh_id')
@@ -142,6 +145,7 @@ if authentication_status:
                         'class_type'], as_index=False).size()
     df2_2 = df2_2[df2_2['lop_thoigianhoc'].isin(
         ['["2","4","6"]', '["3","5","7"]', '["7","8"]', '["7"]'])]
+
     df2_3 = df1.groupby(['kh_ten_group', 'class_type'],
                         as_index=False).ketoan_tientrengio_x.mean()
     # df2 = grand_total(df1, 'lop_cn')
