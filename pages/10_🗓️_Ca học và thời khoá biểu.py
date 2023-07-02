@@ -67,7 +67,7 @@ if authentication_status:
     lophoc_schedules = collect_data(
         'https://vietop.tech/api/get_data/lophoc_schedules')
     lophoc_schedules = lophoc_schedules[[
-        'lop_id', 'teacher_id', 'active']].drop_duplicates("lop_id")
+        'lop_id', 'class_period', 'teacher_id', 'active']].drop_duplicates("lop_id")
     khoahoc = collect_data('https://vietop.tech/api/get_data/khoahoc')
     khoahoc_me = khoahoc.query("kh_parent_id == 0 and kh_active == 1")
     lophoc = collect_data(
@@ -75,6 +75,7 @@ if authentication_status:
     molop = collect_data('https://vietop.tech/api/get_data/molop')
     hocvien = collect_data('https://vietop.tech/api/get_data/hocvien')
     users = collect_data('https://vietop.tech/api/get_data/users')
+
     # Filter date
     # orders = collect_filtered_data(table='orders', date_column='created_at',
     #                                 start_time=ketoan_start_time, end_time=ketoan_end_time)
@@ -97,7 +98,7 @@ if authentication_status:
     tiengiolop = tiengiolop.merge(
         khoahoc, left_on='kh_id_x', right_on='kh_id', how='left')
     # Filter
-    tiengiolop = tiengiolop.loc[:, ['created_at_x', 'lop_cahoc', 'kh_ten', 'lop_cn', 'lop_id', 'lop_ten', 'lop_thoigianhoc',
+    tiengiolop = tiengiolop.loc[:, ['created_at_x', 'kh_ten', 'lop_cn', 'lop_id', 'lop_ten', 'lop_thoigianhoc',
                                     'lop_type', 'lop_status', 'ketoan_id_x', 'ketoan_tientrengio_x']]
     tiengiolop = tiengiolop.merge(lophoc_schedules, on='lop_id')
 
@@ -111,8 +112,9 @@ if authentication_status:
     tiengiolop = rename_lop(tiengiolop, "lop_cn")
     # Drop used columns
     tiengiolop.drop(['active', 'ketoan_id_x'], axis=1, inplace=True)
-    tiengiolop = tiengiolop[['lop_id', 'lop_cn', 'fullname',
+    tiengiolop = tiengiolop[['lop_id', 'lop_cn', 'class_period', 'fullname',
                              'kh_ten', 'lop_ten', 'ketoan_tientrengio_x', 'created_at_x']]
+
     # lop_danghoc = lophoc[lophoc['lop_status'].isin([2, 4])]
     lop_danghoc = lophoc.query(
         "(class_status == 'progress') and deleted_at.isnull()")
@@ -120,12 +122,13 @@ if authentication_status:
     # Create lophoc_khoahoc
     lophoc_khoahoc = lop_danghoc.merge(
         khoahoc_me[['kh_id', 'kh_ten']], left_on='kh_parent', right_on='kh_id')
-    df = lophoc_khoahoc[['lop_id', 'lop_cn', 'lop_cahoc', 'lop_thoigianhoc',
+    df = lophoc_khoahoc[['lop_id', 'lop_cn', 'lop_thoigianhoc',
                          'kh_ten', 'class_type',]].sort_values('lop_id', ascending=True)
     # Create kh_ten_group from kh_ten
     df['kh_ten_group'] = [
         'Lớp Kèm' if "Kèm" in i else 'Lớp Nhóm' if 'Nhóm' in i else i for i in df['kh_ten']]
     df1 = df.merge(tiengiolop, on='lop_id')
+
     # ------------------------------------------------------------ Filter
     # Create a form to filter coso
     with st.sidebar.form(key='coso_filter_form'):
@@ -136,9 +139,9 @@ if authentication_status:
     df1 = df1[df1['lop_cn_y'].isin(coso_filter)]
     # ------------------------------------------------------------ Final
 
-    df2 = df1.groupby(['kh_ten_group', 'lop_cahoc',
+    df2 = df1.groupby(['kh_ten_group', 'class_period',
                       'class_type'], as_index=False).size()
-    df2_1 = df1.groupby(['kh_ten_group', 'lop_cahoc', 'class_type'],
+    df2_1 = df1.groupby(['kh_ten_group', 'class_period', 'class_type'],
                         as_index=False).ketoan_tientrengio_x.mean()
     df2_1['ketoan_tientrengio_x'] = round(df2_1['ketoan_tientrengio_x'], 2)
     df2_2 = df1.groupby(['kh_ten_group', 'lop_thoigianhoc',
@@ -151,7 +154,7 @@ if authentication_status:
     # df2 = grand_total(df1, 'lop_cn')
     # Create a pivot table
     df3 = pd.pivot_table(df2, index=['kh_ten_group', 'class_type'],
-                         columns='lop_cahoc', values='size', fill_value=0,
+                         columns='class_period', values='size', fill_value=0,
                          margins=True, margins_name='Total count', aggfunc='sum').reset_index()
     st.subheader("Số lớp theo ca học và loại lớp")
     st.dataframe(df3.style.background_gradient(
@@ -165,7 +168,7 @@ if authentication_status:
                  '["2","4","6"]', '["3","5","7"]', '["7","8"]', '["7"]']))
     # Create a pivot table
     df4 = pd.pivot_table(df2_1, index=['kh_ten_group', 'class_type'],
-                         columns='lop_cahoc', values='ketoan_tientrengio_x', fill_value=0,
+                         columns='class_period', values='ketoan_tientrengio_x', fill_value=0,
                          margins=True, margins_name='Total mean', aggfunc='mean').reset_index()
 
     df4 = df4.style.background_gradient(
