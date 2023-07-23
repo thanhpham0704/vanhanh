@@ -550,7 +550,7 @@ if authentication_status:
     # Parttime
     df2 = df[df["working_status"] == "Partime"].sort_values(
         by="percent", ascending=True)
-    df2['fullname'] = str(df2['fullname']) + " (" + str(df['level']) + ")"
+    df2['fullname'] = df2['fullname'] + " (" + df['level'] + ")"
     # Plotly graphs
 
     fig3 = plotly_chart(df1.sort_values(
@@ -560,7 +560,6 @@ if authentication_status:
     fig3.update_layout(
         height=1000,  # set the height of the plot to 600 pixels
         width=800)
-
 
 # Plotly graphs
     fig3_1 = plotly_chart(df2.sort_values(
