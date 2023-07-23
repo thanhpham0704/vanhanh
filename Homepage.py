@@ -150,7 +150,7 @@ if authentication_status:
         .query("date_affected <= @ketoan_end_time")\
         .drop_duplicates("id_gg")
     salary.fillna(0, inplace=True)
-    # Thong tin luong
+    # Thong tin luon
     salary['salary_ngay_cong'] = round(
         salary['Tổng lương'] * duration/days_excluding_sundays, 0)
     salary.fillna(0, inplace=True)
