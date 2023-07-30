@@ -96,7 +96,7 @@ if authentication_status:
     days_excluding_sundays = days_in_month - sundays_in_month
     # ----------------------#
 
-    @st.cache_data(ttl=timedelta(days=1))
+    @st.cache_data(ttl=timedelta(hours=3))
     def collect_data(link):
         return (pd.DataFrame((requests.get(link).json())))
 
@@ -123,7 +123,7 @@ if authentication_status:
     #     df['date_created'] = pd.to_datetime(df['date_created'])
     #     return df
 
-    @st.cache_data(ttl=timedelta(days=1))
+    @st.cache_data(ttl=timedelta(hours=3))
     def collect_filtered_data(table, date_column='', start_time='', end_time=''):
         link = f"https://vietop.tech/api/get_data/{table}?column={date_column}&date_start={start_time}&date_end={end_time}"
         df = pd.DataFrame((requests.get(link).json()))
