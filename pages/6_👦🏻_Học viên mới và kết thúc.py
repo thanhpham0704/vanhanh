@@ -89,7 +89,7 @@ if authentication_status:
 
     orders = collect_data(
         'https://vietop.tech/api/get_data/orders').query("deleted_at.isnull()")
-    hv_status = collect_data('https://vietop.tech/api/get_data/hv_status')
+    hv_status = collect_data('https://vietop.tech/api/get_data/hv_status').sort_values("created_at", ascending = False)
     leads = collect_data(
         'https://vietop.tech/api/get_data/leads')
     hocvien = collect_data(
