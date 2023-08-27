@@ -739,3 +739,5 @@ if authentication_status:
     # st.subheader("Các loại Lương theo chi nhánh")
     # st.dataframe(salary_thucthu_grand_total.set_index(
     #     "Chi nhánh"), use_container_width=True)
+
+    
