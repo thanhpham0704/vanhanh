@@ -164,8 +164,12 @@ if authentication_status:
                          columns='lop_thoigianhoc', values='size', fill_value=0,
                          margins=True, margins_name='Total count', aggfunc='sum').reset_index()
     st.subheader("Số lớp theo thời khoá biểu và loại lớp")
-    st.dataframe(df5.style.background_gradient(cmap='YlOrRd', axis=1, subset=[
-                 '["2","4","6"]', '["3","5","7"]', '["7","8"]', '["7"]']))
+    try: 
+        st.dataframe(df5.style.background_gradient(cmap='YlOrRd', axis=1, subset=[
+                    '["2","4","6"]', '["3","5","7"]', '["7","8"]', '["7"]']))
+    except KeyError:
+        st.dataframe(df5.style.background_gradient(cmap='YlOrRd', axis=1, subset=[
+                    '["2","4","6"]', '["3","5","7"]', '["7","8"]']))
     # Create a pivot table
     df4 = pd.pivot_table(df2_1, index=['kh_ten_group', 'class_type'],
                          columns='class_period', values='ketoan_tientrengio_x', fill_value=0,
