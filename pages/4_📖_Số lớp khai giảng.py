@@ -1,13 +1,10 @@
-import matplotlib.pyplot as plt
 import requests
 import pandas as pd
 from datetime import datetime, timedelta, date
 import streamlit as st
 import plotly.express as px
-from pathlib import Path
-import pickle
+import pygwalker as pyg
 import streamlit_authenticator as stauth
-import plotly.graph_objects as go
 
 page_title = "Số lớp khai giảng"
 page_icon = "📖"
@@ -95,6 +92,13 @@ if authentication_status:
         dataframe[column_name] = dataframe[column_name].replace(
             {1: "Hoa Cúc", 2: "Gò Dầu", 3: "Lê Quang Định", 5: "Lê Hồng Phong"})
         return dataframe
+    def lop_kem_nhom():
+        khoahoc_me = khoahoc.query("kh_parent_id == 0 and kh_active == 1")
+        df = lophoc[['kh_parent', 'lop_id']].merge(
+        khoahoc_me[['kh_id', 'kh_ten']], left_on='kh_parent', right_on='kh_id')
+        # Rename columns
+        df.rename(columns={'lop_id': 'lop_id', 'kh_ten': 'khoahoc_me'}, inplace=True)
+        return df[['lop_id', 'khoahoc_me']]
 
     # Get khoahoc
     khoahoc = collect_data('https://vietop.tech/api/get_data/khoahoc')
@@ -119,7 +123,13 @@ if authentication_status:
     df = rename_lop(df, 'lop_cn')
     df = df.groupby(['lop_id', 'lop_cn', 'class_type', 'kh_ten',
                     'lop_start'], as_index=False).size()
-    df = grand_total(df, 'lop_cn')
+    
+    df = df.merge(lop_kem_nhom(), on = 'lop_id')
+    # df = df.set_index("lop_id")
+    df.rename(columns={'kh_ten': 'khoahoc_con'}, inplace=True)
+    # Reindex columns
+    df = df[['lop_id', 'lop_cn', 'class_type', 'lop_start', 'khoahoc_me', 'khoahoc_con', 'size']]
+    #%% 
     df_group = df.groupby("lop_cn", as_index=False)['size'].sum()
     # Create bar_chart
     fig1 = px.bar(df_group, x='lop_cn',
@@ -132,10 +142,30 @@ if authentication_status:
         # Add thousand separators to the text label
         texttemplate='%{text:,.0f}',
         textposition='inside')  # Show the text label inside the bars
-    st.subheader("Số lớp khai giảng theo chi nhánh")
+    st.subheader(f"Số lớp khai giảng theo chi nhánh (Tổng {df.shape[0]} lớp)")
     st.plotly_chart(fig1, use_container_width=True)
-    df = df.set_index("lop_id")
+    #%%
+    on_off = st.selectbox(label="Select online / offline:",
+                                    options=list(df['class_type'].unique()))
+    df_group = df.query("class_type == @on_off").groupby(["lop_cn", "khoahoc_me"], as_index=False)['size'].sum()
+    df_group.columns = ['lop_cn', 'khoahoc_me', 'count']
+    fig2 = px.bar(df_group, x="lop_cn",
+                   y="count", color="khoahoc_me", barmode="group", color_discrete_sequence=['#ffc107', '#07a203', '#2196f3', '#e700aa'], text="count")
+    # update the chart layout
+    fig2.update_layout(title='Thống kê các loại lớp khai giảng',
+                        xaxis_title='Chi nhánh', yaxis_title='Số lớp khai giảng', showlegend=True)
+    fig2.update_traces(
+        hovertemplate="Số lớp khai giảng: %{y:,.0f}<extra></extra>")
+    
+    st.plotly_chart(fig2, use_container_width=True)
+    "---"
+    st.subheader(
+        f"Lớp khai giảng theo chi nhánh và loại lớp")
+    st.dataframe(df_group, use_container_width=True)
     "---"
     st.subheader(
         f"Chi tiết lớp khai giảng")
-    st.dataframe(df.drop('size', axis=1), use_container_width=True)
+    
+    st.dataframe(df.drop("size", axis =1), use_container_width=True)
+   
+
