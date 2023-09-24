@@ -3,7 +3,6 @@ import pandas as pd
 from datetime import datetime, timedelta, date
 import streamlit as st
 import plotly.express as px
-import pygwalker as pyg
 import streamlit_authenticator as stauth
 
 page_title = "Số lớp khai giảng"
