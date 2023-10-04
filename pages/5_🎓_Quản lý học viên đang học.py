@@ -78,7 +78,7 @@ if authentication_status:
     # lop_danghoc = lophoc.query(
     #     "(class_status == 'progress') and deleted_at.isnull()")
     molop = collect_data(
-        'https://vietop.tech/api/get_data/molop').query('molop_active ==1')
+        'https://vietop.tech/api/get_data/molop').query("molop_active == 1")
 
 # ------------------------------------------ Học viên đang học
     import io
@@ -91,12 +91,14 @@ if authentication_status:
     # hv đang họccd Au
     hocvien_danghoc = hocvien.merge(orders, on='hv_id')\
         .query("ketoan_active == 1")
+    hocvien_danghoc.drop_duplicates("hv_id", inplace = True)
 
     hocvien_danghoc = rename_lop(hocvien_danghoc, 'ketoan_coso')
+    
     df = hocvien_danghoc[['hv_id']].merge(molop, on='hv_id', how='inner')\
-        .drop_duplicates("hv_id")\
         .merge(lophoc[['lop_cn', 'lop_id', 'kh_parent']], on='lop_id', how='inner')\
-        .merge(khoahoc_me, left_on='kh_parent', right_on='kh_id')
+        .merge(khoahoc_me, left_on='kh_parent', right_on='kh_id', how = 'inner')
+
     hv_danghoc_details = df.copy()
     df = df.groupby(["lop_cn", "kh_ten"], as_index=False).size().rename(
         columns={"size": "total_students"})
@@ -127,7 +129,7 @@ if authentication_status:
         f"Chi tiết học viên đang học :blue[{hv_danghoc_details.shape[0]}] học viên  ")
     st.dataframe(hv_danghoc_details[['hv_id', 'ketoan_id', 'lop_id', 'lop_cn',
                  'kh_ten', 'created_at', ]], height=250, width=1000)
-
+# %%
 # ------------------------------------------------------------------------------Danh sách học viên đang học, bảo lưu, chờ lớp
     df = hocvien[['hv_id', 'hv_fullname', 'hv_email', 'hv_camket', 'hv_coso', 'hv_status']]\
         .merge(orders[['hv_id', 'ketoan_active', 'ketoan_id', 'remaining_time', 'ketoan_price']], on='hv_id')\
