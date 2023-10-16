@@ -8,24 +8,14 @@ import pickle
 import streamlit_authenticator as stauth
 import numpy as np
 import calendar
-
-# names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành", "Kinh doanh", "SOL"]
-# usernames = ["thanhpham", "tampham",
-#  "vietopvanhanh", 'vietopkinhdoanh', 'vietop_sol']
-
-
-# hashed_passwords = stauth.Hasher(passwords).generate()
-
-# file_path = Path(__file__).parent / "hashed_pw.pkl"
-# with file_path.open("wb") as file:
-#     pickle.dump(hashed_passwords, file)
-
+import gspread
+# %%
+# Configure landing page
 page_title = "Lương và thực thu"
 page_icon = ":chart_with_upwards_trend:"
 layout = "wide"
-st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
 
-# ----------------------------------------
+st.set_page_config(page_title=page_title, page_icon=page_icon, layout=layout)
 names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành", "Kinh doanh"]
 usernames = ["thanhpham", "tampham", "vietopvanhanh", 'vietopkinhdoanh']
 
@@ -68,8 +58,92 @@ if authentication_status:
     st.session_state['authentication_status'] = authentication_status
     # if 'authenticator' not in st.session_state:
     st.session_state['authenticator'] = authenticator
-    # ----------------------#
-    # Filter
+    # %% Function and API
+    @st.cache_data(ttl=timedelta(days=1))
+    def collect_data(link):
+        return (pd.DataFrame((requests.get(link).json())))
+    @st.cache_data(ttl=timedelta(days=1))
+    def collect_filtered_data(table, date_column='', start_time='', end_time=''):
+        link = f"https://vietop.tech/api/get_data/{table}?column={date_column}&date_start={start_time}&date_end={end_time}"
+        df = pd.DataFrame((requests.get(link).json()))
+        df[date_column] = pd.to_datetime(df[date_column])
+        return df
+    
+    def grand_total(dataframe, column):
+        # create a new row with the sum of each numerical column
+        totals = dataframe.select_dtypes(include=[float, int]).sum()
+        totals[column] = "Grand total"
+        # append the new row to the dataframe
+        dataframe = dataframe.append(totals, ignore_index=True)
+        return dataframe
+    @st.cache_data()
+    def rename_lop(dataframe, column_name):
+        dataframe[column_name] = dataframe[column_name].replace(
+            {1: "Hoa Cúc", 2: "Gò Dầu", 3: "Lê Quang Định", 5: "Lê Hồng Phong"})
+        return dataframe
+    @st.cache_data()
+    def thucthu_time(dataframe, column):
+        df = dataframe.groupby(['lop_cn', column], as_index=False)[
+            'price'].sum()
+        df.lop_cn = df.lop_cn.replace(
+            {1: "Hoa Cúc", 2: "Gò Dầu", 3: "Lê Quang Định", 5: "Lê Hồng Phong"})
+        return df
+    @st.cache_data()
+    def plotly_chart(df, yvalue, xvalue, text, title, y_title, x_title, color=None, discrete_sequence=None, map=None):
+        fig = px.bar(df, y=yvalue,
+                     x=xvalue, text=text, color=color, color_discrete_sequence=discrete_sequence, color_discrete_map=map)
+        fig.update_layout(
+            title=title,
+            yaxis_title=y_title,
+            xaxis_title=x_title,
+        )
+        fig.update_traces(textposition='auto')
+        return fig
+    def distribution(df ,col, value_name):
+        df['1'] = 0.26 * df[col]
+        df['2'] = 0.26 * df[col]
+        df['3'] = 0.18 * df[col]
+        df['5'] = 0.30 * df[col]
+        # Subset
+        df = df.loc[:, [
+            'id_gg', 'Họ và tên', '1', '2', '3', '5']]
+        # Lương đào tạo sau khi phân phối
+        df = pd.melt(df, id_vars=[
+            'id_gg', 'Họ và tên'], var_name='lop_cn', value_name=value_name)
+        df['lop_cn'] = df['lop_cn'].astype(
+            'int64')
+        return df
+    
+
+    orders = collect_data(
+        'https://vietop.tech/api/get_data/orders').query("deleted_at.isnull()")
+    diemdanh_details = collect_data(
+        'https://vietop.tech/api/get_data/diemdanh_details')
+    hocvien = collect_data(
+        'https://vietop.tech/api/get_data/hocvien').query("hv_id != 737 and deleted_at.isnull()")
+    # Mapping hv_camket
+    conditions = [hocvien['hv_camket'] == 0, hocvien['hv_camket'] == 1, hocvien['hv_camket'] == 2,
+                  hocvien['hv_camket'] == 3, hocvien['hv_camket'] == 4]
+    choices = ["Không cam kết", "Cam kết tiêu chuẩn",
+               "Huỷ hợp đồng 1", "Huỷ hợp đồng 2", "Cam kết thi thật"]
+    hocvien['hv_camket'] = np.select(conditions, choices)
+    leads = collect_data(
+        'https://vietop.tech/api/get_data/leads')
+    leads_test = leads.query("tele_status == 'dathen'")
+    leads_test = leads_test[leads_test['coso_status'].isin(
+        ['testchuahoc', 'dangkyhoc', 'khonghoc', 'thithu', 'thamkhao'])]
+    users = collect_data(
+        'https://vietop.tech/api/get_data/users')
+    diemthi_meta = collect_data(
+        'https://vietop.tech/api/get_data/diemthi_meta')
+    diemthi_meta = diemthi_meta[['diemthi_id', 'user_id']]
+    diemthi = collect_data('https://vietop.tech/api/get_data/diemthi')
+    hv_status = collect_data('https://vietop.tech/api/get_data/hv_status')
+    lophoc = collect_data('https://vietop.tech/api/get_data/lophoc')
+    
+
+    # %%
+    # Date filter
     now = datetime.now()
     DEFAULT_START_DATE = datetime(now.year, now.month, 1)
     DEFAULT_END_DATE = datetime(now.year, now.month, 1) + timedelta(days=32)
@@ -87,53 +161,222 @@ if authentication_status:
 
     # the duration between 2 dates exclude Sunday
     duration = sum(1 for i in range((ketoan_end_time - ketoan_start_time).days + 1)
-                   if (ketoan_start_time + timedelta(i)).weekday() != 6)
+                    if (ketoan_start_time + timedelta(i)).weekday() != 6)
     # the number of days in a month exclude Sunday
     days_in_month = calendar.monthrange(
         ketoan_start_time.year, ketoan_start_time.month)[1]
     sundays_in_month = sum(1 for day in range(1, days_in_month + 1) if datetime(
         ketoan_start_time.year, ketoan_start_time.month, day).weekday() == 6)
     days_excluding_sundays = days_in_month - sundays_in_month
-    # ----------------------#
+    
+    # %%
+    # Thưởng đạt điểm
+    diemthi['created_at'] = pd.to_datetime(diemthi['created_at'])
+    # Extract date portion from datetime values
+    diemthi['created_at'] = diemthi['created_at'].dt.date
+    diemthi_thuong = diemthi[['id', 'hv_id', 'date', 'created_at', 'target', 'diemcandat',
+                              'overall', 'type']]\
+        .query("created_at >= @ketoan_start_time and created_at <= @ketoan_end_time and (type == 2 or type == 13)")\
+        .merge(diemthi_meta, left_on='id', right_on='diemthi_id', how='inner')\
+        .merge(users[['fullname', 'id']], left_on='user_id', right_on='id')\
+        .merge(hocvien[['hv_id', 'hv_fullname', 'hv_camket', 'diem_camket']], on='hv_id')\
+        .sort_values(['created_at'], ascending=True)\
+        .drop_duplicates(['hv_id', 'user_id'])
+    diemthi_thuong.fillna(0, inplace=True)
+    diemthi_thuong.query("target == 0 and diem_camket == 0")
+    diemthi_thuong.diem_camket = diemthi_thuong.diem_camket.astype("float64")
+    # Merge hocvien to get dauvao_overall
+    diemthi_thuong = diemthi_thuong.merge(
+        hocvien[['hv_id', 'dauvao_overall', 'hv_coso']], on='hv_id')
+    diemthi_thuong['thuong_datdiem'] = 0
+    # Function to update status based on score and benchmark
 
-    @st.cache_data(ttl=timedelta(hours=3))
-    def collect_data(link):
-        return (pd.DataFrame((requests.get(link).json())))
+    def update_status(row):
+        if row['type'] == 2:
+            if row['hv_camket'] == 'Cam kết thi thật':
+                score_diff = row['overall'] - row['diem_camket']
+                status_increase = int(score_diff / 0.5) * 200000
+                new_status = row['thuong_datdiem'] + status_increase + 650000
+                return max(new_status, 0)  # Ensuring status is not negative
+            else:
+                score_diff = row['overall'] - row['dauvao_overall']
+                status_increase = int(score_diff / 0.5) * 200000
+                new_status = row['thuong_datdiem'] + status_increase
+                return max(new_status, 0)  # Ensuring status is not negative
+        else:
+            return row['thuong_datdiem']
 
-    @st.cache_data()
-    def rename_lop(dataframe, column_name):
-        dataframe[column_name] = dataframe[column_name].replace(
-            {1: "Hoa Cúc", 2: "Gò Dầu", 3: "Lê Quang Định", 5: "Lê Hồng Phong"})
-        return dataframe
+    # Apply the update_status function to the dataframe
+    diemthi_thuong['thuong_datdiem'] = diemthi_thuong.apply(
+        update_status, axis=1)
+    diemthi_thuong['thuong_datdiem'] = diemthi_thuong['thuong_datdiem'].fillna(
+        0)
+    gv_count = diemthi_thuong.sort_values("hv_fullname")\
+        .groupby(['hv_id'], as_index=False).size()
+    
+    diemthi_thuong_details = diemthi_thuong.merge(gv_count, on='hv_id')
+    
+    diemthi_thuong_details['divided_thuong_datdiem'] = diemthi_thuong_details['thuong_datdiem'] / diemthi_thuong_details['size']
+    
+    diemthi_thuong_details.drop(
+        ['id_x', 'user_id', 'id_y', 'size', 'hv_id', 'diemthi_id'], axis=1, inplace=True)
+    diemthi_thuong_details = diemthi_thuong_details.reindex(
+        columns=['date', 'created_at', 'fullname', 'hv_fullname', 'hv_coso','hv_camket', 'type', 'divided_thuong_datdiem', 'dauvao_overall',  'diem_camket', 'overall'])
+    # Mapping
+    Subjects = {1: "TĐK - Foundation 1", 2: "Thi thật", 3: "Test lại sau bảo lưu", 4: "TĐK - Foundation 2",
+                5: "TĐK - 3.5", 6: "TĐK - 4.0", 7:  "TĐK - 4.5", 8: "TĐLK - 5.0", 9: "TĐK - 5.5", 10: "TĐk - 6.0",
+                11: "TĐK - 6.0+", 12: "TĐK - 6.5", 13: "Thi cuối khoá"}
+    # Add new columns
+    diemthi_thuong_details.loc[:, ("type")
+                               ] = diemthi_thuong_details.loc[:, ("type")].map(Subjects)
+    diemthi_thuong_group = diemthi_thuong_details.groupby(
+        'fullname', as_index=False)['divided_thuong_datdiem'].sum()
+    reward_datdiem = diemthi_thuong_group.merge(
+        users[['fullname', 'id']], on='fullname').sort_values("divided_thuong_datdiem", ascending=False)
+    reward_datdiem['divided_thuong_datdiem'] = round(
+        reward_datdiem['divided_thuong_datdiem'], 0)
+    
+    # For cac loai chi phi
+    total_datdiem = diemthi_thuong_details.groupby('hv_coso', as_index = False)['divided_thuong_datdiem'].sum()
+    total_datdiem = rename_lop(total_datdiem, 'hv_coso')
 
-    @st.cache_data()
-    def grand_total(dataframe, column):
-        # create a new row with the sum of each numerical column
-        totals = dataframe.select_dtypes(include=[float, int]).sum()
-        totals[column] = "Grand total"
-        # append the new row to the dataframe
-        dataframe = dataframe.append(totals, ignore_index=True)
-        return dataframe
-        # Define a function
+    # %%
+    # Thưởng test đầu vào
+    # Subset orders
+    orders_subset = orders[['hv_id', 'ketoan_price', 'ketoan_tientrengio', 'remaining_time']]\
+        .drop_duplicates(subset='hv_id', keep='last')
+    orders_subset['tiendadong'] = orders_subset['ketoan_tientrengio'] * \
+        orders_subset['remaining_time']
+    # Subset and merge leads
+    chuyendoi = hocvien[['hv_id', 'hv_fullname', 'user_test', 'user_id', 'hv_coso', 'hv_ngayhoc', 'hv_catest']][hocvien.user_test.notnull()]\
+        .merge(leads_test[['hv_id', 'coso_ngaytest', 'lead_test']], on='hv_id', how='left')
+    # Convert coso_ngaytest to datetime64[ns]
+    chuyendoi['coso_ngaytest'] = chuyendoi['coso_ngaytest'].astype(
+        'datetime64[ns]')
+    # Convert coso_ngaytest to datetime64[ns]
+    chuyendoi['hv_ngayhoc'] = chuyendoi['hv_ngayhoc'].astype('datetime64[ns]')
+    # Remove NAN value
+    chuyendoi = chuyendoi[~chuyendoi.coso_ngaytest.isna()]
+    # Merge users to get gv_fullname
+    chuyendoi = chuyendoi.merge(
+        users[['id', 'fullname']], left_on='user_test', right_on='id', how='left')
+    # Convert datetime to month
+    chuyendoi['coso_ngaytest_month'] = chuyendoi['coso_ngaytest'].dt.month
+    # Convert datetime to month
+    chuyendoi['hv_ngayhoc_month'] = chuyendoi['hv_ngayhoc'].dt.month
+    # Total test by month
+    test = pd.DataFrame(chuyendoi.groupby(['coso_ngaytest_month', 'user_test', 'fullname'], as_index=True)
+                        .size().reset_index(name='test'))
 
-    # @st.cache_data(ttl=timedelta(days=365))
-    # def csv_reader(file):
-    #     df = pd.read_csv(file)
-    #     df = df.query("phanloai == 1")  # Filter lop chính
-    #     df['date_created'] = pd.to_datetime(df['date_created'])
-    #     return df
+    # Total enrol by month
+    enrol = pd.DataFrame(chuyendoi.groupby(['coso_ngaytest_month', 'user_test', 'fullname'], as_index=True)
+                            .hv_ngayhoc.count().reset_index(name='enrol'))
 
-    @st.cache_data(ttl=timedelta(hours=3))
-    def collect_filtered_data(table, date_column='', start_time='', end_time=''):
-        link = f"https://vietop.tech/api/get_data/{table}?column={date_column}&date_start={start_time}&date_end={end_time}"
-        df = pd.DataFrame((requests.get(link).json()))
-        df[date_column] = pd.to_datetime(df[date_column])
-        return df
+    # Merge test and enrol
+    test_enrol = test.merge(enrol[['user_test', 'coso_ngaytest_month', 'enrol']], on=[
+                            'user_test', 'coso_ngaytest_month'])
+    
 
+    test_enrol['conversion_rate'] = round(
+        test_enrol['enrol'] / test_enrol['test'] * 100)
+    # Merge orders_subset
+    conversion = chuyendoi.merge(
+        orders_subset, on='hv_id', how='left', validate='one_to_many')
+    # remove phong dao tao and mr bot and null
+    conversion = conversion[conversion.fullname.notnull() &
+                            ~conversion.user_test.isin([2, 106])]
+    # Convert datetime to date
+    conversion['coso_ngaytest'] = conversion['coso_ngaytest'].dt.date.astype(
+        "datetime64[ns]")
+
+    conversion['hv_ngayhoc'] = conversion['hv_ngayhoc'].astype(
+        "datetime64[ns]")
+    # Đóng tiền trong ngày
+    empty = []
+    for index, row in conversion.iterrows():
+        if row['hv_ngayhoc'] == row['coso_ngaytest']:
+            empty.append("Chốt nóng")
+        elif row['hv_ngayhoc'] < row['coso_ngaytest'] + pd.Timedelta(31, 'D'):
+            empty.append(
+                "Chốt sau")
+        else:
+            empty.append("Mất deal")
+
+    # Assign new column
+    conversion['chot_sale'] = empty
+    conversion.fillna(0, inplace=True)
+
+    conversion[['hv_ngayhoc']] = conversion[[
+        'hv_ngayhoc']].replace({0: '1999-02-02'})
+    # Convert 'hv_ngayhoc' column to pandas DatetimeIndex
+    conversion['hv_ngayhoc'] = pd.to_datetime(conversion['hv_ngayhoc'])
+    conversion['hv_ngayhoc'] = conversion['hv_ngayhoc'].dt.date
+    conversion['coso_ngaytest'] = conversion['coso_ngaytest'].dt.date
+    # Test
+    conversion_test = conversion \
+        .query("(coso_ngaytest >= @ketoan_start_time) and coso_ngaytest <= @ketoan_end_time") \
+        .groupby(['user_test', 'fullname', 'hv_ngayhoc', 'coso_ngaytest', 'hv_coso', 'id'], as_index=False).size()
+    # Enrol
+    conversion_enrol = conversion \
+        .query("hv_ngayhoc >= @ketoan_start_time \
+            and hv_ngayhoc <= @ketoan_end_time \
+            and coso_ngaytest <= @ketoan_end_time") \
+        .groupby(['user_test', 'fullname', 'hv_ngayhoc', 'coso_ngaytest', 'hv_coso', 'id'], as_index=False).size()
+    conversion_test['status'] = 'test'
+    conversion_enrol['status'] = 'enrol'
+    total_conversion = pd.concat([conversion_test, conversion_enrol])
+    
+    # Filter less then 31 days
+    total_conversion = total_conversion[total_conversion['hv_ngayhoc']
+                                        <= total_conversion['coso_ngaytest'] + pd.Timedelta(31, 'D')]
+    # Groupby fullname and status
+    total_conversion = total_conversion.groupby(
+        ['id', 'fullname','hv_coso', 'status'], as_index=False)['size'].sum()
+    total_conversion['thuong'] = total_conversion['size'] * 50000
+
+    # total_conversion.thuong_test.sum()
+    total_conversion_pivot = total_conversion.pivot_table(values=['size', 'thuong'], index=['fullname', 'id', 'hv_coso'],
+                                                            columns='status', margins=False, fill_value=0).reset_index()
+    # Rename the columns
+    total_conversion_pivot.columns = ['_'.join(col).strip(
+    ) if col[1] else col[0] for col in total_conversion_pivot.columns]
+
+    total_conversion_pivot['thuong_test_enrol'] = total_conversion_pivot['thuong_enrol'] + \
+        total_conversion_pivot['thuong_test']
+    
+    reward_test_enrol = total_conversion_pivot.merge(
+        users[['fullname', 'id']], on='fullname')
+    reward_test_enrol_total = grand_total(reward_test_enrol, 'fullname')
+
+    # ------------------------------------------------------------------------------------------------------------------------
+    # Create hv_leads
+    hv_leads = hocvien[['hv_id', 'hv_fullname']].merge(
+        leads[['hv_id', 'coso_ngaytest']], on='hv_id')
+    hv_leads['coso_ngaytest'] = hv_leads['coso_ngaytest'].astype(
+        "datetime64[ns]")
+    hv_leads['coso_ngaytest'] = pd.to_datetime(
+        hv_leads['coso_ngaytest']).dt.date
+    df = conversion.merge(hv_leads, on=[
+        'hv_fullname', 'coso_ngaytest'],  how='left')
+    df = df.merge(users[['id', 'fullname']],
+                    left_on='user_id', right_on='id', how='left')
+    df = rename_lop(df, 'hv_coso')
+    df = df.query(
+        "(coso_ngaytest >= @ketoan_start_time) and coso_ngaytest <= @ketoan_end_time")
+    df = df[['id_x','fullname_x', 'hv_fullname', 'fullname_y', 'hv_coso', 'coso_ngaytest',
+                'hv_ngayhoc', 'hv_catest', 'lead_test', 'tiendadong', 'chot_sale']]
+    conversion = df.rename(columns={'fullname_x': 'gv_fullname',
+                                    'fullname_y': 'ec_fullname'})
+    conversion = conversion.query(
+        "(coso_ngaytest >= @ketoan_start_time) and coso_ngaytest <= @ketoan_end_time")
+    
+    total_reward = total_conversion.groupby(['hv_coso'], as_index = False)['thuong'].sum()
+    total_reward = rename_lop(total_reward, 'hv_coso')
+    
+
+    # %% 
+    # Main dashboard
     # "---------------" Thông tin lương giáo viên
-    users = collect_data('https://vietop.tech/api/get_data/users')
-    # Thong tin luong
-    import gspread
     sa = gspread.service_account(
         filename='taichinh-380507-b8f84e9ee681.json')
     sh = sa.open("Nhân sự")
@@ -150,7 +393,7 @@ if authentication_status:
         .query("date_affected <= @ketoan_end_time")\
         .drop_duplicates("id_gg")
     salary.fillna(0, inplace=True)
-    # Thong tin luon
+    # Thong tin luong
     salary['salary_ngay_cong'] = round(
         salary['Tổng lương'] * duration/days_excluding_sundays, 0)
     salary.fillna(0, inplace=True)
@@ -163,16 +406,8 @@ if authentication_status:
     # "------------------"
     gv_diemdanh = collect_filtered_data(
         table='diemdanh', date_column='date_created', start_time=ketoan_start_time, end_time=ketoan_end_time)
-    # gv_diemdanh = collect_data('https://vietop.tech/api/get_data/diemdanh')
     gv_diemdanh['date_created'] = pd.to_datetime(gv_diemdanh['date_created'])
-    # gv_diemdanh = gv_diemdanh.query(
-    #     "date_created >= @ketoan_start_time and date_created <= @ketoan_end_time")
-    # Ca hoc table
-    # cahoc = {'cahoc': ['ca1', 'ca2', 'ca3', 'ca4', 'ca5', 'ca6'],
-    #          'start_time': ['08:30:00', '10:30:00', '13:30:00', '15:30:00', '18:00:00', '19:45:00'],
-    #          'end_time': ['10:30:00', '12:30:00', '15:30:00', '17:30:00', '19:45:00', '21:30:00']}
-    # cahoc = pd.DataFrame(cahoc)
-    # --------------- GET DATA FROM API
+   
 
     sh = sa.open("Nhân sự")
     worksheet = sh.worksheet("Overtime")
@@ -254,7 +489,7 @@ if authentication_status:
         columns={'WORKING_STATUS': 'working_status'}, inplace=True)
 
     # "---------------" Lương overtime của giáo viên
-    lophoc = collect_data('https://vietop.tech/api/get_data/lophoc')
+    
     diemdanh = gv_diemdanh.merge(users[['fullname', 'id']], left_on='giaovien', right_on='id', how='inner')\
         .sort_values("created_at", ascending=False)
     # diemdanh['cahoc'].replace({0: 'không học', 1: 'ca1', 2: 'ca2', 3: 'ca3', 4:'ca4', 5:'ca5', 6:'ca6', 7:'ca 1.5 giờ', 8: 'ca 2.5 giờ', 9: 'ca 3.0 giờ', 10: 'ca 1 giờ', 11: 'ca 1.75 giờ', 12: 'ca 2 giờ'}, inplace = True)
@@ -284,10 +519,10 @@ if authentication_status:
 
     # "---------------"
     sal_diem = diemdanh_lop_cn.merge(
-        salary, left_on='id', right_on='id_gg')
+        salary, left_on='id', right_on='id_gg', how = 'outer')
     # Merge diemdanh and overtime
     sal_diem_over = sal_diem\
-        .merge(overtime_melt, on=['id_gg', 'Họ và tên', 'cahoc', 'day_of_week', 'time_of_day', 'weekend_or_not'], how='inner', validate='many_to_many')
+        .merge(overtime_melt, on=['id_gg', 'Họ và tên', 'cahoc', 'day_of_week', 'time_of_day', 'weekend_or_not'], how='outer', validate='many_to_many')
     # Drop duplicates
     sal_diem_over.drop_duplicates(inplace=True)
     # Fill na
@@ -317,91 +552,87 @@ if authentication_status:
     sal_diem_over_group = sal_diem_over.groupby(['id_gg', 'Họ và tên', 'working_status_x', 'overtime_status', 'salary_ngay_cong'], as_index=False)['sogio', 'salary_gio_cong'].sum()\
         .query("overtime_status == 'out'").sort_values("salary_gio_cong", ascending=False)
     sal_diem_over_details = sal_diem_over.drop('salary_ngay_cong', axis=1)\
-        .query("overtime_status == 'out'")\
+        .query("overtime_status == 'out'")
 
     # ----------------------# Phân phối lương cứng theo chi nhánh
     df = sal_diem_over.groupby(['lop_cn', 'id_gg', 'Họ và tên', 'working_status_x', 'overtime_status',
                                 'salary_ngay_cong'], as_index=False)['sogio', 'salary_gio_cong'].sum()
-    df = df.query('overtime_status == "in"')
-    df_sum = df.groupby('Họ và tên', as_index=False)['sogio'].sum()
-    df_proportion = df_sum.merge(df, on='Họ và tên')
+    df = df.query('overtime_status != "out"')
+    df_sum = df.groupby('id_gg', as_index=False)['sogio'].sum()
+    df_proportion = df_sum.merge(df, on='id_gg')
     df_proportion['proportion_sogio'] = df_proportion['sogio_y'] / \
         df_proportion['sogio_x']
+    # Fillna value with 1 incase 0 divided by 0
+    df_proportion['proportion_sogio'] = df_proportion['proportion_sogio'].fillna(
+        1)
     df_proportion['salary_ngay_cong_divided'] = df_proportion['proportion_sogio'] * \
         df_proportion['salary_ngay_cong']
     # Giáo viên ngoại trừ phòng đào tạo
-    df_proportion_nodaotao = df_proportion[~df_proportion['Họ và tên'].isin(
-        ['Mai Minh Trung', 'Trần Thị Thanh Nga', 'Nguyễn Thị Thu Hà', 'Huỳnh Trương Hồng Châu Long', 'Nguyễn Huy Hoàng', 'Đỗ Nguyễn Đăng Khoa'])]
+    daotao = ['Mai Minh Trung', 'Trần Thị Thanh Nga', 'Nguyễn Thị Thu Hà', 'Huỳnh Trương Hồng Châu Long', 'Nguyễn Huy Hoàng', 'Nguyễn Quang Huy']
+    df_proportion_nodaotao = df_proportion[~df_proportion['Họ và tên'].isin(daotao)]
+    
     # Subset
     df_proportion_nodaotao = df_proportion_nodaotao[[
         'id_gg', 'Họ và tên', 'lop_cn', 'salary_ngay_cong_divided']]
     # Riêng phòng đào tạo
-    df_proportion_daotao = salary[salary['Họ và tên'].isin(
-        ['Phạm Tấn Thành', 'Mai Minh Trung', 'Trần Thị Thanh Nga', 'Nguyễn Thị Thu Hà', 'Huỳnh Trương Hồng Châu Long', 'Nguyễn Huy Hoàng', 'Đỗ Nguyễn Đăng Khoa'])]
-    df_proportion_daotao['1'] = 0.26 * df_proportion_daotao['salary_ngay_cong']
-    df_proportion_daotao['2'] = 0.26 * df_proportion_daotao['salary_ngay_cong']
-    df_proportion_daotao['3'] = 0.18 * df_proportion_daotao['salary_ngay_cong']
-    df_proportion_daotao['5'] = 0.30 * df_proportion_daotao['salary_ngay_cong']
-    # Subset
-    df_proportion_daotao = df_proportion_daotao.loc[:, [
-        'id_gg', 'Họ và tên', '1', '2', '3', '5']]
-    # Lương đào tạo sau khi phân phối
-    df_proportion_daotao = pd.melt(df_proportion_daotao, id_vars=[
-        'id_gg', 'Họ và tên'], var_name='lop_cn', value_name='salary_ngay_cong_divided')
-    df_proportion_daotao['lop_cn'] = df_proportion_daotao['lop_cn'].astype(
-        'int64')
+    df_proportion_daotao = salary[salary['Họ và tên'].isin(daotao)]
+    
+    
+    df_proportion_daotao = distribution(df_proportion_daotao, 'salary_ngay_cong', 'salary_ngay_cong_divided')
     # Concat luong đào tạo and lương giáo viên
     salary_gv_dt = pd.concat([df_proportion_daotao, df_proportion_nodaotao])
     salary_gv_dt['salary_ngay_cong_divided'] = round(
         salary_gv_dt['salary_ngay_cong_divided'], 2)
     salary_gv_dt = salary_gv_dt.sort_values(
         "salary_ngay_cong_divided", ascending=False)
-    # ----------------------# Thực thu
+    
+    
+    
+    
+    # %%
+    # Thưởng khác
+    sa = gspread.service_account(
+    filename='taichinh-380507-b8f84e9ee681.json')
+    sh = sa.open("Nhân sự")
+    worksheet = sh.worksheet("Thưởng GV khác")
+    reward_other = pd.DataFrame(worksheet.get_all_records())
+    # salary = salary.replace("", np.nan).dropna(subset = 'Mã giáo viên')
+    reward_other = reward_other.replace('\.', '', regex=True)
 
-    orders = collect_data(
-        'https://vietop.tech/api/get_data/orders').query("deleted_at.isnull()")
-    # lophoc = collect_data('https://vietop.tech/api/get_data/lophoc')
-    hocvien = collect_data(
-        'https://vietop.tech/api/get_data/hocvien').query("hv_id != 737 and deleted_at.isnull()")
-    # hv đang họccd Au
+    reward_other = reward_other.astype(
+        {'Số tiền': 'float', 'date_affected': 'datetime64[ns]'})
+    reward_other.columns = ['id_gg', 'Họ và tên', 'thuong_amount',
+                            'note', 'reward_type', 'date_affected']
+    reward_other = reward_other.query(
+        "date_affected >= @ketoan_start_time and date_affected <= @ketoan_end_time")
+    reward_other_gv = reward_other.groupby(["id_gg", "Họ và tên"], as_index=False)[
+        'thuong_amount'].sum()
+
+    reward_other = reward_other.groupby(
+        ['id_gg', 'Họ và tên', 'reward_type', 'date_affected'], as_index=False)['thuong_amount'].sum()
+    
+    reward_other = distribution(reward_other, 'thuong_amount', 'thuong_amount_divided')
+    reward_other_total = reward_other.groupby('lop_cn', as_index = False)['thuong_amount_divided'].sum()
+  
+    reward_other_total =rename_lop(reward_other_total, 'lop_cn')
+
+    
+    # ----------------------# Thực thu
+    # hv đang họccd 
     hocvien_danghoc = hocvien.merge(orders, on='hv_id')\
         .query("ketoan_active == 1")\
         .groupby('ketoan_coso', as_index=False).size().rename(columns={"size": "total_students"})
     hocvien_danghoc = rename_lop(hocvien_danghoc, 'ketoan_coso')
-
-    @st.cache_data()
-    def plotly_chart(df, yvalue, xvalue, text, title, y_title, x_title, color=None, discrete_sequence=None, map=None):
-        fig = px.bar(df, y=yvalue,
-                     x=xvalue, text=text, color=color, color_discrete_sequence=discrete_sequence, color_discrete_map=map)
-        fig.update_layout(
-            title=title,
-            yaxis_title=y_title,
-            xaxis_title=x_title,
-        )
-        fig.update_traces(textposition='auto')
-        return fig
-
-    fig5 = plotly_chart(hocvien_danghoc, 'ketoan_coso', 'total_students', 'total_students',
-                        'Tổng học viên đang học theo chi nhánh', 'Chi nhánh', 'Học viên')
-
     # Lop dang hoc
     lop_danghoc = lophoc.query(
         "(lop_status == 2 or lop_status == 4) and deleted_at.isnull()")\
         .groupby('lop_cn', as_index=False).size().rename(columns={"size": "total_classes"})
     lop_danghoc.lop_cn = lop_danghoc.lop_cn.replace(
         {1: "Hoa Cúc", 2: "Gò Dầu", 3: "Lê Quang Định", 5: "Lê Hồng Phong"})
-
-    fig6 = plotly_chart(lop_danghoc, 'lop_cn', 'total_classes', 'total_classes',
-                        "Tổng lớp đang học theo chi nhánh", 'Chi nhánh', 'Lớp học')
     ""
     # "------------------"
-    # df = csv_reader("diemdanh_details.csv")
-
-    # df1 = collect_filtered_data(table='diemdanh_details', date_column='date_created',
-    #                             start_time='2023-01-01', end_time='2025-01-01')
-    # diemdanh_details = pd.concat([df, df1])
-    diemdanh_details = collect_data(
-        'https://vietop.tech/api/get_data/diemdanh_details')
+   
+    
     diemdanh_details['date_created'] = diemdanh_details['date_created'].astype(
         "datetime64[ns]")
 
@@ -438,13 +669,7 @@ if authentication_status:
         ['id', 'fullname', 'lop_cn'], as_index=False)['price'].sum()
     # "_______________"
 
-    @st.cache_data()
-    def thucthu_time(dataframe, column):
-        df = dataframe.groupby(['lop_cn', column], as_index=False)[
-            'price'].sum()
-        df.lop_cn = df.lop_cn.replace(
-            {1: "Hoa Cúc", 2: "Gò Dầu", 3: "Lê Quang Định", 5: "Lê Hồng Phong"})
-        return df
+    
     thucthu_diemdanh_ngay = thucthu_time(thucthu, 'date_created')
     thucthu_diemdanh_ngay = thucthu_diemdanh_ngay.pivot(
         index='date_created', columns='lop_cn', values='price')
@@ -474,38 +699,43 @@ if authentication_status:
         'salary_gio_cong'].sum()
     overtime_fixed_salary_cn = fixed_salary_cn.merge(
         overtime_salary_cn, on='lop_cn')
-
-    overtime_fixed_salary_cn['fixed_overtime'] = overtime_fixed_salary_cn['salary_ngay_cong_divided'] + \
-        overtime_fixed_salary_cn['salary_gio_cong']
-
+    # Add thuong dat diem to thucthu
+    overtime_fixed_salary_cn = rename_lop(overtime_fixed_salary_cn, 'lop_cn')
+    
+    # %%
+    # Add thuong to thucthu
+    overtime_fixed_salary_cn = overtime_fixed_salary_cn.merge(total_reward, left_on = 'lop_cn', right_on = 'hv_coso', how = 'outer')\
+        .merge(total_datdiem, on = 'hv_coso', how = 'outer')\
+        .merge(reward_other_total[['lop_cn', 'thuong_amount_divided']], on = 'lop_cn', how = 'outer')
+    
+    # %%
+    overtime_fixed_salary_cn.fillna(0, inplace = True)
+    overtime_fixed_salary_cn['total_expenses'] = overtime_fixed_salary_cn['salary_ngay_cong_divided'] + \
+        overtime_fixed_salary_cn['salary_gio_cong'] + overtime_fixed_salary_cn['thuong'] + overtime_fixed_salary_cn['divided_thuong_datdiem'] \
+        + overtime_fixed_salary_cn['thuong_amount_divided']
+    
+    thucthu_cn = rename_lop(thucthu_cn, 'lop_cn')
     salary_thucthu = overtime_fixed_salary_cn.merge(thucthu_cn, on='lop_cn')
-
     # Create grand total
     salary_thucthu_grand_total = grand_total(salary_thucthu, 'lop_cn')
-    # Create percent
-    salary_thucthu_grand_total['percent'] = salary_thucthu_grand_total.fixed_overtime / \
-        salary_thucthu_grand_total.price * 100
-    salary_thucthu_grand_total['percent'] = round(
-        salary_thucthu_grand_total['percent'], 2)
-    salary_thucthu_grand_total = rename_lop(
-        salary_thucthu_grand_total, 'lop_cn')
+    # Create percent (total_expense: Tổng chi phí giáo viên, price: 'Tổng thực thu điểm danh)
+    # salary_thucthu_grand_total['percent'] = salary_thucthu_grand_total['total_expenses'] / \
+    #     salary_thucthu_grand_total.price * 100
+    # salary_thucthu_grand_total['percent'] = round(
+    #     salary_thucthu_grand_total['percent'], 2)
+    
 
-    salary_thucthu_grand_total.columns = ['Chi nhánh', 'Tổng lương ngày công',
-                                          'Tổng lương giờ công', 'Tổng lương giáo viên', 'Thực thu điểm danh', 'Tổng lương / thực thu']
-    # "_______________"
-    # Create a barplot for Tỷ lệ tổng lương / thực thu theo chi nhánh
-    fig2 = plotly_chart(salary_thucthu_grand_total, 'Tổng lương / thực thu', 'Chi nhánh', salary_thucthu_grand_total["Tổng lương / thực thu"].apply(
-        lambda x: '{:.2%}'.format(x/100)),
-        "Tỷ lệ tổng lương / thực thu theo chi nhánh", 'Chi nhánh', 'Tổng lương / thực thu', color='Chi nhánh', map={
-        'Hoa Cúc': '#ffc107',
-        'Gò Dầu': '#07a203',
-        'Lê Quang Định': '#2196f3',
-        'Lê Hồng Phong': '#e700aa',
-        'Grand total': 'white'
-    })
-    fig2.update_layout(font=dict(size=17), xaxis={
-                       'categoryorder': 'total descending'})
+    
+    # %%
+    salary_thucthu_grand_total.drop("hv_coso", axis =1, inplace = True)
+    
+    salary_thucthu_grand_total.columns = \
+    ['Chi nhánh', 'Tổng lương ngày công',
+    'Tổng lương giờ công', 'Tổng thưởng đầu vào', 'Tổng thưởng đạt điểm', 'Tổng thưởng khác', 'Tổng chi phí giáo viên', 'Tổng thực thu điểm danh']
 
+    
+    # %%
+  
     # "_______________"
     thucthu_hocvien_lop = thucthu_cn_rename.merge(
         hocvien_danghoc, left_on='lop_cn', right_on='ketoan_coso')\
@@ -515,12 +745,6 @@ if authentication_status:
     thucthu_hocvien_lop['thucthu_div_lophoc'] = round(
         thucthu_hocvien_lop['price'] / thucthu_hocvien_lop['total_classes'], 0)
 
-    # fig7 = plotly_chart(thucthu_hocvien_lop, 'lop_cn', 'thucthu_div_hocvien', thucthu_hocvien_lop['thucthu_div_hocvien'].apply(lambda x: format(x, ',')),
-    #                     "Trung bình thực thu 1 học viên", 'Chi nhánh', 'Thực thu / học viên')
-
-    # fig8 = plotly_chart(thucthu_hocvien_lop, 'lop_cn', 'thucthu_div_lophoc', thucthu_hocvien_lop['thucthu_div_lophoc'].apply(lambda x: format(x, ',')),
-    #                     "Trung bình thực thu 1 lớp học", 'Chi nhánh', 'Thực thu / lớp học')
-
     # "_______________"
     overtime_salary_cn_gv = sal_diem_over_group_lop.groupby(
         ['id_gg', 'Họ và tên', "lop_cn", "working_status_x"], as_index=False)['salary_gio_cong'].sum()
@@ -529,11 +753,11 @@ if authentication_status:
     df.fillna(0, inplace=True)
     df['fixed_overtime'] = df['salary_gio_cong'] + \
         df['salary_ngay_cong_divided']
+    df = rename_lop(df, 'lop_cn')
     gv_thucthu_cs = df.merge(thucthu_cn, on='lop_cn')
     gv_thucthu_cs['percent'] = round(gv_thucthu_cs['fixed_overtime'] /
                                      gv_thucthu_cs['price'] * 100, 2)
     # "_______________"
-    # salary_merge = st.session_state['salary_merge']
     gv_thucthu_gv = gv_thucthu_cs.groupby(['id_gg', 'Họ và tên'], as_index=False)['fixed_overtime'].sum()\
         .merge(thucthu_gv, left_on='id_gg', right_on='id', how='left')
     gv_thucthu_gv['percent'] = round(gv_thucthu_gv['fixed_overtime'] /
@@ -556,22 +780,23 @@ if authentication_status:
     fig3 = plotly_chart(df1.sort_values(
         "percent", ascending=True), 'fullname', 'percent', df1["percent"].apply(
         lambda x: '{:.2%}'.format(x/100)),
-        "Fulltime - Tỷ lệ tổng lương / thực thu", '', 'Tỷ lệ')
+        "Fulltime - Tỷ lệ Tổng chi phí / thực thu", '', 'Tỷ lệ')
     fig3.update_layout(
         height=1000,  # set the height of the plot to 600 pixels
         width=800)
+
 
 # Plotly graphs
     fig3_1 = plotly_chart(df2.sort_values(
         "percent", ascending=True), 'fullname', 'percent', df2["percent"].apply(
         lambda x: '{:.2%}'.format(x/100)),
-        "Parttime - Tỷ lệ tổng lương / thực thu", '', 'Tỷ lệ')
+        "Parttime - Tỷ lệ Tổng chi phí / thực thu", '', 'Tỷ lệ')
     fig3_1.update_layout(
         height=1000,  # set the height of the plot to 600 pixels
         width=800)
 
     # "_______________" thực thu chuyển phí
-    hv_status = collect_data('https://vietop.tech/api/get_data/hv_status')
+    
     # Filter orders
     orders_chuyenphi = orders.query("ketoan_active == 5")[["ketoan_id", "hv_id", "ketoan_details", "ketoan_coso", "ketoan_sogio", "ketoan_price",
                                                            "ketoan_tientrengio", "remaining_time", "kh_id"]]
@@ -673,9 +898,27 @@ if authentication_status:
     # Add % in tỷ trọng tổng thực thu
     thucthu_hocvien_lop["tỷ trọng tổng thực thu"] = thucthu_hocvien_lop["tỷ trọng tổng thực thu"].apply(
         lambda x: '{:.2%}'.format(x/100))
-    salary_thucthu_grand_total['Tổng lương / thực thu'] = salary_thucthu_grand_total['Tổng lương / thực thu'].apply(
-        lambda x: '{:.2%}'.format(x/100))
+    # get tổng thực thu 
+    salary_thucthu_grand_total = thucthu_hocvien_lop[['lop_cn', 'tổng thực thu']].merge(salary_thucthu_grand_total, left_on = 'lop_cn', right_on = 'Chi nhánh')
+    salary_thucthu_grand_total['Tổng chi phí giáo viên / tổng các loại thực thu'] = salary_thucthu_grand_total['Tổng chi phí giáo viên'] / salary_thucthu_grand_total['tổng thực thu']
+      # "_______________"
+    # Create a barplot for Tỷ lệ Tổng chi phí / thực thu theo chi nhánh
+    fig2 = plotly_chart(salary_thucthu_grand_total, 'Tổng chi phí giáo viên / tổng các loại thực thu', 'Chi nhánh', salary_thucthu_grand_total["Tổng chi phí giáo viên / tổng các loại thực thu"].apply(
+        lambda x: '{:.2%}'.format(x)),
+        "Tổng chi phí giáo viên / tổng các loại thực thu", 'Tổng chi phí giáo viên / tổng các loại thực thu', 'Chi nhánh',color='Chi nhánh', map={
+        'Hoa Cúc': '#ffc107',
+        'Gò Dầu': '#07a203',
+        'Lê Quang Định': '#2196f3',
+        'Lê Hồng Phong': '#e700aa',
+        'Grand total': 'white'
+    })
+    fig2.update_layout(font=dict(size=17), xaxis={
+                       'categoryorder': 'total descending'})
     st.plotly_chart(fig2, use_container_width=True)
+
+    
+    st.info(f'Tổng chi phí giáo viên = tổng lương ngày công + tổng lương giờ công + tổng thưởng đầu vào + tổng thưởng đạt điểm + tổng thưởng khác')
+    st.info(f'Tổng thực thu  = thực thu điểm danh + thực thu chuyển phí + thực thu kết thúc')
     st.subheader("Các loại thực thu theo chi nhánh")
     # define a function
 
@@ -703,27 +946,13 @@ if authentication_status:
     except KeyError:
         st.warning(
             f"Từ ngày {ketoan_start_time} đến ngày {ketoan_end_time} chưa có data thực thu chuyển phí và thực thu kết thúc")
-    st.subheader("Các loại Lương theo chi nhánh")
-    st.dataframe(salary_thucthu_grand_total.set_index(
+    st.subheader("Các loại chi phí theo chi nhánh")
+    st.dataframe(salary_thucthu_grand_total[['Chi nhánh', 'Tổng lương ngày công',
+    'Tổng lương giờ công', 'Tổng thưởng đầu vào', 'Tổng thưởng đạt điểm', 'Tổng thưởng khác', 'Tổng chi phí giáo viên']].set_index(
         "Chi nhánh"), use_container_width=True)
     # Show Chi nhanh by 2 columns
     st.plotly_chart(fig10, use_container_width=True)
     st.plotly_chart(fig9, use_container_width=True)
-
-    # left_column, right_column = st.columns([1, 2])
-    # left_column.plotly_chart(fig10, use_container_width=True)
-    # right_column.plotly_chart(fig9, use_container_width=True)
-    # left_column, right_column = st.columns(2)
-    # left_column.plotly_chart(fig7, use_container_width=True)
-    # right_column.plotly_chart(fig8, use_container_width=True)
-
-    # left_column, right_column = st.columns(2)
-    # left_column.plotly_chart(fig5, use_container_width=True)
-    # right_column.plotly_chart(fig6, use_container_width=True)
-
-    # left_column, right_column = st.columns(2)
-    # left_column.plotly_chart(fig1, use_container_width=True)
-    # right_column.plotly_chart(fig2, use_container_width=True)
 
     left_column, right_column = st.columns(2)
     left_column.plotly_chart(fig3, use_container_width=True)
@@ -736,8 +965,16 @@ if authentication_status:
         "Tỷ lệ lương ngoài giờ / trong giờ của giáo viên fulltime", '', 'Tỷ lệ')
     fig4.update_layout(height=800, width=800)
     st.plotly_chart(fig4)
-    # st.subheader("Các loại Lương theo chi nhánh")
-    # st.dataframe(salary_thucthu_grand_total.set_index(
-    #     "Chi nhánh"), use_container_width=True)
 
-    
+    # Create session state
+    # if "reward_test_enrol" not in st.session_state:
+    #     st.session_state['reward_test_enrol'] = reward_test_enrol.rename(
+    #             columns={'fullname': "Họ và tên", "id": "id_gg"})
+    # if "conversion" not in st.session_state:
+    #     st.session_state['conversion'] = conversion
+        
+    # if "reward_datdiem" not in st.session_state:
+    #     st.session_state['reward_datdiem'] = reward_datdiem.rename(
+    #         columns={'fullname': "Họ và tên", "id": "id_gg"})
+    # if "reward_other" not in st.session_state:
+    #     st.session_state['reward_other'] = reward_other
