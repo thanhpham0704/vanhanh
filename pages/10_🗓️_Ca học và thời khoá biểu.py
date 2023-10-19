@@ -168,8 +168,7 @@ if authentication_status:
         st.dataframe(df5.style.background_gradient(cmap='YlOrRd', axis=1, subset=[
                     '["2","4","6"]', '["3","5","7"]', '["7","8"]', '["7"]']))
     except KeyError:
-        st.dataframe(df5.style.background_gradient(cmap='YlOrRd', axis=1, subset=[
-                    '["2","4","6"]', '["3","5","7"]', '["7","8"]']))
+        st.dataframe(df5.style.background_gradient(cmap='YlOrRd', axis=1))
     # Create a pivot table
     df4 = pd.pivot_table(df2_1, index=['kh_ten_group', 'class_type'],
                          columns='class_period', values='ketoan_tientrengio_x', fill_value=0,
