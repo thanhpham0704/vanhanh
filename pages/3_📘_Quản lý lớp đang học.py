@@ -79,7 +79,14 @@ if authentication_status:
         "(class_status == 'progress') and deleted_at.isnull()")
     molop = collect_data(
         'https://vietop.tech/api/get_data/molop').query('molop_active ==1')
-
+    work_positions = collect_data(
+        'https://vietop.tech/api/get_data/work_positions').query("active == 1")
+    users = collect_data(
+        'https://vietop.tech/api/get_data/users')
+    lophoc_schedules = collect_data(
+        'https://vietop.tech/api/get_data/lophoc_schedules').drop_duplicates(subset = 'lop_id')
+    
+    # %%
     # Get khoahoc_me's name
     df = lop_danghoc.merge(
         khoahoc_me[['kh_id', 'kh_ten']], left_on='kh_parent', right_on='kh_id')
@@ -157,22 +164,77 @@ if authentication_status:
     df["Percentage %"] = df["Percentage %"]/100
     df = df.style.background_gradient()
     df = df.format({'Percentage %': '{:.2%}'})
-
-    # df = df.set_precision(0)
-    st.subheader("Số lớp đang học theo từng loại lớp")
-    st.dataframe(df, height=250, width=1000)
-    st.subheader("Trung bình số lượng học viên trong từng loại lớp học")
-    st.plotly_chart(fig1, use_container_width=True)
-    st.subheader("Phân phối số lượng học viên trong các lớp nhóm")
-    st.plotly_chart(fig2, use_container_width=True)
-    st.markdown("---")
-    st.subheader("Chi tiết lớp đang học")
+    
+    # %%
+    
+    # lophoc edit
     lophoc_details = lophoc_details[['lop_id', 'lop_cn', 'class_type',
                                      'lop_cahoc', 'kh_ten', 'lop_buoihoc', 'lop_note']].merge(df_dis[['lop_id', 'sĩ số']], on='lop_id', how='left')
     lophoc_details = rename_lop(lophoc_details, 'lop_cn')
     lophoc_details = lophoc_details.reindex(
         columns=['lop_id', 'lop_cn', 'kh_ten', 'sĩ số', 'lop_cahoc', 'lop_buoihoc', 'class_type',
                  'lop_note'])
+    # Fulltime and Partime teacher
+    position = work_positions[['position_name', 'position_id']]\
+        .merge(users[['fullname', 'id', 'position_id']], on = 'position_id', how = 'inner', validate='one_to_many')
+    
+    lophoc_details = lophoc_schedules[['lop_id', 'teacher_id']]\
+             .merge(lophoc_details, on = 'lop_id', how = 'right')\
+             .merge(position, left_on = 'teacher_id', right_on = 'id', how = 'left')\
+             .drop(columns=['teacher_id', 'position_id', 'id'])
+    lophoc_details['position_name'].fillna('N/A',inplace = True)
+    lophoc_details.replace({'Academic R&D Leader' : 'Giáo viên Fulltime', 'Quản lý đào tạo':'Giáo viên Fulltime', 'Placement Tester': 'Giáo viên Part-time'}, inplace = True)
+    
+    df_size = lophoc_details.groupby(['lop_cn','position_name'], as_index=False).size()
+    # Group the DataFrame by both "lop_cn" and "position_name" and calculate the sum of the "size" column within each group
+    grouped = df_size.groupby(["lop_cn", "position_name"])["size"].sum()
+    # Calculate the percentage of "size" within each group
+    percentage = grouped / grouped.groupby('lop_cn').sum() * 100
+    df_percent = percentage.to_frame()
+    df_percent.reset_index(inplace = True)
+    df_percent['size'] = round(df_percent['size'],1)
+    # Add % in tỷ trọng tổng thực thu
+    df_percent["size"] = df_percent["size"].apply(lambda x: '{:.1%}'.format(x/100))
+    df_position_name = df_percent.merge(df_size[['size']], left_index = True, right_index = True) 
+    # Combine size_x and size_y into a single string for text
+    df_position_name['text'] = df_position_name['size_x'].astype(str) + " ( " + df_position_name['size_y'].astype(str) + " ) "
+    # Create the stacked bar chart using Plotly
+    fig3 = px.bar(df_position_name, x="lop_cn", y="size_x", color="position_name", title="", text="text")
+    fig3.update_traces(texttemplate='%{text}', textposition='inside')
+    fig3.update_layout(barmode="stack")
+    fig3.update_layout(
+        hovermode="x",
+        hoverlabel=dict(
+            bgcolor="black",
+            font_size=16,
+            font_family="Arial"
+        )
+    )
+    fig3.update_xaxes(title_text='')
+
+    fig3.update_traces(texttemplate='%{text}', textposition='outside')
+
+    fig3.update_traces(
+        hovertemplate="Tỷ lệ: %{y:,.1f}<extra></extra>")
+    
+    
+             
+    
+    # %%
+    
+    # df = df.set_precision(0)
+    st.subheader("Số lớp đang học theo từng loại lớp")
+    st.dataframe(df, height=250, width=1000)
+    ""
+    st.subheader("Tỷ lệ vị trí giáo viên của lớp đang học")
+    st.plotly_chart(fig3, use_container_width=True)
+    st.subheader("Trung bình số lượng học viên trong từng loại lớp học")
+    st.plotly_chart(fig1, use_container_width=True)
+    st.subheader("Phân phối số lượng học viên trong các lớp nhóm")
+    st.plotly_chart(fig2, use_container_width=True)
+    st.markdown("---")
+    st.subheader("Chi tiết lớp đang học")
+    
     st.dataframe(lophoc_details)
 
     import io
