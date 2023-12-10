@@ -631,7 +631,7 @@ if authentication_status:
         {1: "Hoa Cúc", 2: "Gò Dầu", 3: "Lê Quang Định", 5: "Lê Hồng Phong"})
     ""
     # "------------------"
-   
+    # %% Thực thu
     
     diemdanh_details['date_created'] = diemdanh_details['date_created'].astype(
         "datetime64[ns]")

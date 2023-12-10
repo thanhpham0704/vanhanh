@@ -142,17 +142,26 @@ if authentication_status:
     df = rename_lop(df, 'hv_coso')
     df = df.drop(['hv_status', 'hv_camket'], axis=1)
 
-    "---"
-    st.subheader(
-        f"Danh sách học viên đang học, bảo lưu, chờ lớp :blue[{df.shape[0]}] học viên")
-    diemdanh_details = diemdanh_details.query("phanloai == 1")
+    # %%
+    
+    diemdanh_details = diemdanh_details.query("phanloai == 1") # phanloai == 1: lớp chính, 0: lớp phụ
     diemdanh_details = diemdanh_details.groupby(
-        'ketoan_id', as_index=False)['giohoc'].sum()
-    df1 = df.merge(diemdanh_details, on='ketoan_id')
-
+        ['ketoan_id', 'phanloai'], as_index=False)['giohoc'].sum()
+    df1 = df.merge(diemdanh_details, on='ketoan_id', how = 'left')
+    df1['giohoc'] = df1['giohoc'].fillna(0)
     df1['conlai'] = df1['remaining_time'] - df1['giohoc']
+    df1['phanloai'] = df1['phanloai'].map({1: "Lớp chính", 0:"Lớp phụ"})
+    
+    # ketoan_tientrengio = orders.query("ketoan_active == 1").groupby(['hv_id'], as_index = False)['ketoan_tientrengio'].mean()
+
+    # df1 = df1.merge(ketoan_tientrengio, on = 'hv_id', how = 'left')
+
     df1.columns = ['hv_id', 'hv_fullname', 'hv_email', 'chi nhánh', 'trạng thái',
-                   'PĐK', 'thực giờ đăng ký', 'tổng tiền khoá học', 'đã học', 'còn lại']
+                   'PĐK', 'thực giờ đăng ký', 'tổng tiền khoá học', 'loại lớp', 'đã học', 'còn lại']
+    df1['Tiền trên giờ'] = round(df1['tổng tiền khoá học'] / df1['thực giờ đăng ký'],2)
+    st.subheader(
+        f"Danh sách học viên đang học, bảo lưu, chờ lớp :blue[{df1.shape[0]}] học viên")
+
     st.dataframe(df1.reset_index(drop=True), use_container_width=True)
 
     with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
