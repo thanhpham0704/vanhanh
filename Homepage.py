@@ -183,8 +183,10 @@ if authentication_status:
         .sort_values(['created_at'], ascending=True)\
         .drop_duplicates(['hv_id', 'user_id'])
     diemthi_thuong.fillna(0, inplace=True)
-    diemthi_thuong.query("target == 0 and diem_camket == 0")
+    st.dataframe(diemthi_thuong)
     diemthi_thuong.diem_camket = diemthi_thuong.diem_camket.astype("float64")
+
+
     # Merge hocvien to get dauvao_overall
     diemthi_thuong = diemthi_thuong.merge(
         hocvien[['hv_id', 'dauvao_overall', 'hv_coso']], on='hv_id')

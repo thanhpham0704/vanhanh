@@ -133,7 +133,9 @@ if authentication_status:
 # ------------------------------------------------------------------------------Danh sách học viên đang học, bảo lưu, chờ lớp
     df = hocvien[['hv_id', 'hv_fullname', 'hv_email', 'hv_camket', 'hv_coso', 'hv_status']]\
         .merge(orders[['hv_id', 'ketoan_active', 'ketoan_id', 'remaining_time', 'ketoan_price']], on='hv_id')\
-        .query('ketoan_active == 0 or ketoan_active == 1 or ketoan_active == 4')\
+        .query("ketoan_active != 5")
+        # .query('ketoan_active == 0 or ketoan_active == 1 or ketoan_active == 4')
+        
         # Mapping ketoan_active
     conditions = [(df['ketoan_active'] == 0), df['ketoan_active']
                   == 1, df['ketoan_active'] == 4, df['ketoan_active'] == 5]
@@ -152,9 +154,7 @@ if authentication_status:
     df1['conlai'] = df1['remaining_time'] - df1['giohoc']
     df1['phanloai'] = df1['phanloai'].map({1: "Lớp chính", 0:"Lớp phụ"})
     
-    # ketoan_tientrengio = orders.query("ketoan_active == 1").groupby(['hv_id'], as_index = False)['ketoan_tientrengio'].mean()
 
-    # df1 = df1.merge(ketoan_tientrengio, on = 'hv_id', how = 'left')
 
     df1.columns = ['hv_id', 'hv_fullname', 'hv_email', 'chi nhánh', 'trạng thái',
                    'PĐK', 'thực giờ đăng ký', 'tổng tiền khoá học', 'loại lớp', 'đã học', 'còn lại']
