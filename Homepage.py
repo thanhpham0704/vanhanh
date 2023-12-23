@@ -187,7 +187,6 @@ if authentication_status:
         .sort_values(['created_at'], ascending=True)\
         .drop_duplicates(['hv_id', 'user_id'])
     diemthi_thuong.fillna(0, inplace=True)
-    diemthi_thuong.diem_camket = diemthi_thuong.diem_camket.astype("float64")
 
     try:
         diemthi_thuong.diem_camket = diemthi_thuong.diem_camket.astype(
@@ -196,6 +195,7 @@ if authentication_status:
         # Extract the problematic value from the error message
         error_value = str(e).split(":")[-1].strip()
         st.warning(f"Có dấu {error_value} trong điểm cam kết")
+
     # Merge hocvien to get dauvao_overall
     diemthi_thuong = diemthi_thuong.merge(
         hocvien[['hv_id', 'dauvao_overall', 'hv_coso']], on='hv_id')
@@ -579,8 +579,9 @@ if authentication_status:
     df_proportion['salary_ngay_cong_divided'] = df_proportion['proportion_sogio'] * \
         df_proportion['salary_ngay_cong']
     # Giáo viên ngoại trừ phòng đào tạo
-    daotao = ['Mai Minh Trung', 'Trần Thị Thanh Nga', 'Nguyễn Thị Thu Hà',
-              'Huỳnh Trương Hồng Châu Long', 'Nguyễn Huy Hoàng', 'Nguyễn Quang Huy']
+
+    daotao = ['Pham Việt Hoàng', 'Huỳnh Trương Hồng Châu Long',
+              'Nguyễn Thị Thu Hà', 'Trần Thị Thanh Nga', 'Lê Duy Anh', 'Nguyễn Quang Huy']
     df_proportion_nodaotao = df_proportion[~df_proportion['Họ và tên'].isin(
         daotao)]
 
@@ -642,7 +643,6 @@ if authentication_status:
         {1: "Hoa Cúc", 2: "Gò Dầu", 3: "Lê Quang Định", 5: "Lê Hồng Phong"})
     ""
     # "------------------"
-    # %% Thực thu
 
     diemdanh_details['date_created'] = diemdanh_details['date_created'].astype(
         "datetime64[ns]")
@@ -652,7 +652,6 @@ if authentication_status:
         .groupby(['ketoan_id', 'lop_id', 'gv_id', 'date_created'], as_index=False)['price', 'giohoc'].sum()\
         .merge(lophoc, on='lop_id', how='left')\
         .merge(users[['fullname', 'id']], left_on='gv_id', right_on='id', how='left')
-
     thucthu_all = diemdanh_details.query("date_created >= '2023-01-01'")\
         .groupby(['ketoan_id', 'lop_id', 'gv_id', 'date_created', 'price'], as_index=False)['giohoc'].sum()\
         .merge(lophoc, on='lop_id')\
@@ -667,8 +666,10 @@ if authentication_status:
     thucthu_all['date_created_month'] = pd.Categorical(
         thucthu_all['date_created_month'], categories=new_order, ordered=True)
     # Groupby giaovien
+    
     thucthu_gv = thucthu.groupby(['id', 'fullname'], as_index=False)[
         'price'].sum()
+
     # Groupby cn
     thucthu_cn = thucthu.groupby(['lop_cn'], as_index=False)['price'].sum()
     thucthu_cn_rename = thucthu.groupby(
@@ -766,14 +767,16 @@ if authentication_status:
                                      gv_thucthu_cs['price'] * 100, 2)
     # "_______________"
     gv_thucthu_gv = gv_thucthu_cs.groupby(['id_gg', 'Họ và tên'], as_index=False)['fixed_overtime'].sum()\
-        .merge(thucthu_gv, left_on='id_gg', right_on='id', how='left')
+        .merge(thucthu_gv, left_on='id_gg', right_on='id', how='outer')
+
     gv_thucthu_gv['percent'] = round(gv_thucthu_gv['fixed_overtime'] /
                                      gv_thucthu_gv['price'] * 100, 2)
 
-    gv_thucthu_gv = gv_thucthu_gv.merge(salary, left_on='id', right_on='id_gg')
+    gv_thucthu_gv = gv_thucthu_gv.merge(salary, left_on='id', right_on='id_gg', how = 'outer')
 
     # Fulltime
     df = gv_thucthu_gv
+    # df.to_excel("thucthu_gv_2023.xlsx")
     df1 = df[df["working_status"] == "Fulltime"].sort_values(
         by="percent", ascending=True)
     df1['fullname'] = df1['fullname'] + " (" + df['level'] + ")"
