@@ -14,19 +14,7 @@ try:
     authenticator = st.session_state['authenticator']
 except KeyError:
     authentication_status = None
-# names = ["Phạm Tấn Thành", "Phạm Minh Tâm", "Vận hành"]
-# usernames = ["thanhpham", "tampham", "vietopvanhanh"]
 
-# # Load hashed passwords
-# file_path = Path(__file__).parent / 'hashed_pw.pkl'
-# with file_path.open("rb") as file:
-#     hashed_passwords = pickle.load(file)
-
-# authenticator = stauth.Authenticate(names, usernames, hashed_passwords,
-#                                     "sales_dashboard", "abcdef", cookie_expiry_days=1)
-
-
-# name, authentication_status, username = authenticator.login("Login", "main")r
 
 if authentication_status == False:
     st.error("Username/password is incorrect")

@@ -145,6 +145,7 @@ if authentication_status:
     diemthi = collect_data('https://vietop.tech/api/get_data/diemthi')
     hv_status = collect_data('https://vietop.tech/api/get_data/hv_status')
     lophoc = collect_data('https://vietop.tech/api/get_data/lophoc')
+    
 
     # %%
     # Date filter
@@ -652,6 +653,7 @@ if authentication_status:
         .groupby(['ketoan_id', 'lop_id', 'gv_id', 'date_created'], as_index=False)['price', 'giohoc'].sum()\
         .merge(lophoc, on='lop_id', how='left')\
         .merge(users[['fullname', 'id']], left_on='gv_id', right_on='id', how='left')
+    
     thucthu_all = diemdanh_details.query("date_created >= '2023-01-01'")\
         .groupby(['ketoan_id', 'lop_id', 'gv_id', 'date_created', 'price'], as_index=False)['giohoc'].sum()\
         .merge(lophoc, on='lop_id')\
