@@ -92,17 +92,16 @@ if authentication_status:
         khoahoc = collect_data('https://vietop.tech/api/get_data/khoahoc')
         khoahoc_me = khoahoc.query("kh_parent_id == 0 and kh_active == 1")
         df = lophoc.merge(
-        khoahoc_me[['kh_id', 'kh_ten']], left_on='kh_parent', right_on='kh_id')
+            khoahoc_me[['kh_id', 'kh_ten']], left_on='kh_parent', right_on='kh_id')
         return df
-        
- 
-    diemdanh_details = collect_filtered_data(table='diemdanh_details', date_column='date_created', start_time='2023-01-01', end_time='2023-12-31')
+
+    diemdanh_details = collect_filtered_data(
+        table='diemdanh_details', date_column='date_created', start_time='2023-01-01', end_time='2023-12-31')
 
     users = collect_data('https://vietop.tech/api/get_data/users')
- 
 
     diemdanh_details['date_created'] = diemdanh_details['date_created'].astype(
-    "datetime64[ns]")
+        "datetime64[ns]")
 
     thucthu = diemdanh_details.query(
         'date_created >= @ketoan_start_time and date_created <= @ketoan_end_time')\
@@ -110,24 +109,44 @@ if authentication_status:
         .merge(lophoc[['lop_id']], on='lop_id', how='left')\
         .merge(users[['fullname', 'id']], left_on='gv_id', right_on='id', how='left')
 
-    
-    df = thucthu.merge(lophoc_khoahoc_me()[['lop_id', 'lop_cn', 'kh_ten', 'class_type','lop_ten', 'lop_start', 'lop_end']], on = 'lop_id', how = 'left')
-    df_group = df.groupby(["kh_ten", "class_type"], as_index = False).price.sum()
-   
-    
+    df = thucthu.merge(lophoc_khoahoc_me()[
+                       ['lop_id', 'lop_cn', 'kh_ten', 'class_type', 'lop_ten', 'lop_start', 'lop_end']], on='lop_id', how='left')
+    df_group = df.groupby(["kh_ten", "class_type"], as_index=False).price.sum()
+
     fig1 = px.bar(df_group, x="price",
-                   y="kh_ten", color="class_type", barmode="group", color_discrete_sequence=['#ffc107', '#07a203', '#2196f3', '#e700aa'], text=df_group["price"].apply(lambda x: f'{x:,.0f}'))
+                  y="kh_ten", color="class_type", barmode="group", color_discrete_sequence=['#ffc107', '#07a203', '#2196f3', '#e700aa'], text=df_group["price"].apply(lambda x: f'{x:,.0f}'))
     # update the chart layout
     fig1.update_layout(title='',
-                        xaxis_title='', yaxis_title='', showlegend=True, height=600 )
+                       xaxis_title='', yaxis_title='', showlegend=True, height=400)
     fig1.update_traces(
         hovertemplate="Thực thu: %{x:,.0f}<extra></extra>",
-         textposition='auto')
-    
-    st.plotly_chart(fig1, use_container_width=True)
-    "---"
+        textposition='auto')
+    col1, col2 = st.columns([2.5, 1.5])
+    with col1:
+        st.plotly_chart(fig1, use_container_width=True)
+    with col2:
+        df_group.columns = ['Khoá học', 'Loại lớp', 'Thực thu']
+        st.write("")
+        st.write("")
+        st.dataframe(df_group, use_container_width=True)
+        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            # Write each dataframe to a different worksheet.
+            df_group.to_excel(
+                writer, sheet_name='Sheet1')
+            # Close the Pandas Excel writer and output the Excel file to the buffer
+            writer.save()
+            st.download_button(
+                label="Download",
+                data=buffer,
+                file_name="Thucthu_theo_hinh_thuc_lop.xlsx",
+                mime="application/vnd.ms-excel"
+            )
+
     st.subheader(
         f"Chi tiết thực thu điểm danh theo hình thức lớp")
+    df = df.rename(columns={"price": "thực thu",
+                   "class_type": "loại lớp", "kh_ten": "khoá học"})
+    
     st.dataframe(df, use_container_width=True)
 
     with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
@@ -143,3 +162,4 @@ if authentication_status:
             mime="application/vnd.ms-excel"
         )
 
+# %%
