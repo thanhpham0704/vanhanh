@@ -121,11 +121,13 @@ if authentication_status:
     fig1.update_traces(
         hovertemplate="Thực thu: %{x:,.0f}<extra></extra>",
         textposition='auto')
-    col1, col2 = st.columns([2.5, 1.5])
+    col1, col2 = st.columns([2, 2])
     with col1:
         st.plotly_chart(fig1, use_container_width=True)
     with col2:
         df_group.columns = ['Khoá học', 'Loại lớp', 'Thực thu']
+        df_group["Percentage"] = round((df_group['Thực thu'] / df_group['Thực thu'].sum()) * 100,2)
+        df_group["Percentage"] = df_group["Percentage"].astype(str) + '%'
         st.write("")
         st.write("")
         st.dataframe(df_group, use_container_width=True)
